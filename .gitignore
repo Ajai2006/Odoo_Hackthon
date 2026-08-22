@@ -13,25 +13,28 @@ dist/
 build/
 .eggs/
 
-# Django & SQLite
+# Django
 db.sqlite3
-dayflow.db
-dayflow.db-journal
-test.db
 *.log
 local_settings.py
 staticfiles/
 media/
 
-# Node / React / Next.js
+# Node / Next.js / React / Vite
 node_modules/
 .next/
 out/
+dist/
 .vite/
 *.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Database files
+dayflow.db
+dayflow.db-journal
+test.db
 
 # IDE & OS
 .vscode/
