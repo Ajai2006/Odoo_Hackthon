@@ -49,8 +49,20 @@ export async function PUT(
       );
     }
 
-    const reviewerId = body.reviewer_id || 6; // Default to Marcus Vance (HR Admin)
-    const adminComment = body.admin_comment ? body.admin_comment.trim() : null;
+    const reviewerId = typeof body.reviewer_id === 'number' && body.reviewer_id > 0
+      ? body.reviewer_id
+      : 6; // Default to Marcus Vance (HR Admin)
+    const adminComment = body.admin_comment
+      ? body.admin_comment.trim().slice(0, 1000) // Cap at 1000 chars
+      : null;
+
+    // Enforce: rejection requires a comment
+    if (body.status === 'rejected' && !adminComment) {
+      return NextResponse.json(
+        { success: false, message: 'A reason/comment is required when rejecting a leave request.' },
+        { status: 400 }
+      );
+    }
 
     // Update leave request
     const updateStmt = db.prepare(`
@@ -108,7 +120,7 @@ export async function PUT(
   } catch (error: any) {
     console.error('Error in PUT /api/leaves/[id]/review:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error.', error: error.message },
+      { success: false, message: 'Internal server error.' },
       { status: 500 }
     );
   }

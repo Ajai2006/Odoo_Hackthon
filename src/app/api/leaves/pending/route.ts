@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error('Error in GET /api/leaves/pending:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error.', error: error.message },
+      { success: false, message: 'Internal server error.' },
       { status: 500 }
     );
   }

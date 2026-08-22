@@ -6,8 +6,17 @@ import { calculateSLA } from '@/lib/slaTracker';
 import { ApplyLeavePayload, LeaveRequest } from '@/types';
 
 export async function POST(req: NextRequest) {
+  let body: ApplyLeavePayload;
   try {
-    const body = (await req.json()) as ApplyLeavePayload;
+    body = (await req.json()) as ApplyLeavePayload;
+  } catch {
+    return NextResponse.json(
+      { success: false, message: 'Invalid JSON in request body.' },
+      { status: 400 }
+    );
+  }
+
+  try {
 
     // 1. Server-side validation on every field
     const validation = await validateLeaveApplication(body);
@@ -99,11 +108,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Error in POST /api/leaves/apply:', error);
     return NextResponse.json(
-      {
-        success: false,
-        message: 'Internal server error processing leave application.',
-        error: error.message,
-      },
+      { success: false, message: 'Internal server error processing leave application.' },
       { status: 500 }
     );
   }

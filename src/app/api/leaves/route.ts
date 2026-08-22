@@ -4,13 +4,24 @@ import { calculateSLA } from '@/lib/slaTracker';
 import { getDepartmentConflicts } from '@/lib/conflictResolver';
 import { LeaveRequest } from '@/types';
 
+const VALID_STATUSES = ['pending', 'approved', 'rejected', 'all'];
+const VALID_TYPES = ['paid', 'sick', 'unpaid', 'all'];
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status');
-    const leaveType = searchParams.get('leave_type');
-    const department = searchParams.get('department');
+    const status = searchParams.get('status') || 'all';
+    const leaveType = searchParams.get('leave_type') || 'all';
+    const department = searchParams.get('department') || 'all';
     const search = searchParams.get('search');
+
+    // Validate enum inputs (security: prevent unexpected filter values)
+    if (!VALID_STATUSES.includes(status)) {
+      return NextResponse.json({ success: false, message: 'Invalid status filter.' }, { status: 400 });
+    }
+    if (!VALID_TYPES.includes(leaveType)) {
+      return NextResponse.json({ success: false, message: 'Invalid leave_type filter.' }, { status: 400 });
+    }
 
     const db = await getDb();
     let query = `
@@ -28,25 +39,26 @@ export async function GET(req: NextRequest) {
     `;
     const params: any[] = [];
 
-    if (status && status !== 'all') {
+    if (status !== 'all') {
       query += ` AND l.status = ?`;
       params.push(status);
     }
-    if (leaveType && leaveType !== 'all') {
+    if (leaveType !== 'all') {
       query += ` AND l.leave_type = ?`;
       params.push(leaveType);
     }
-    if (department && department !== 'all') {
+    if (department !== 'all') {
       query += ` AND e.department = ?`;
       params.push(department);
     }
     if (search) {
+      // Parameterized LIKE — safe against injection
       query += ` AND (e.name LIKE ? OR l.reason LIKE ? OR e.department LIKE ?)`;
-      const s = `%${search}%`;
+      const s = `%${search.slice(0, 100)}%`; // Cap length to prevent DOS
       params.push(s, s, s);
     }
 
-    query += ` ORDER BY l.created_at DESC`;
+    query += ` ORDER BY l.created_at DESC LIMIT 500`; // Hard upper limit
 
     const rawLeaves = db.prepare(query).all(...params) as any[];
 
@@ -54,23 +66,12 @@ export async function GET(req: NextRequest) {
     for (const l of rawLeaves) {
       const sla = calculateSLA(l.created_at, l.status);
       const { conflicts } = await getDepartmentConflicts(l.employee_id, l.start_date, l.end_date, l.id);
-      leaves.push({
-        ...l,
-        sla,
-        conflicts,
-      });
+      leaves.push({ ...l, sla, conflicts });
     }
 
-    return NextResponse.json({
-      success: true,
-      total: leaves.length,
-      leaves,
-    });
+    return NextResponse.json({ success: true, total: leaves.length, leaves });
   } catch (error: any) {
     console.error('Error in GET /api/leaves:', error);
-    return NextResponse.json(
-      { success: false, message: 'Internal server error.', error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: 'Internal server error.' }, { status: 500 });
   }
 }
