@@ -2,28 +2,26 @@
 
 > **Every workday, perfectly aligned.**
 
-Full-stack enterprise HRMS featuring **Attendance & Shift Management**, **JWT Authentication & RBAC**, **HttpOnly Cookie Security**, and **Workforce Analytics**.
+Full-stack enterprise HRMS featuring **Attendance & Shift Management**, **Leave Management Workflow**, **Workforce Risk & Anomaly Engine**, **JWT Authentication & RBAC**, **HttpOnly Cookie Security**, and **Offline SQLite Database Import**.
 
 ---
 
-## 🏗️ Architecture & Consolidated Stacks
+## 🏗️ Architecture & Stack Scope
 
 ```
 HRM/
-├── client/           React 18 + Vite (Production Attendance & Analytics UI)
-├── server/           Express.js + Native Node SQLite (Production API & JWT Auth)
-├── archive/          Archived prototypes & secondary stacks
-│   ├── backend/      Django 5 + DRF (Accounts, Payroll prototype)
-│   ├── frontend/     React 18 + Vite (Django frontend prototype)
-│   ├── src/          Next.js 15 SQLite prototype
-│   └── prototypes/   Standalone HTML/CSS prototypes
+├── client/           React 18 + Vite (Live Production Frontend on port 3000)
+├── server/           Express.js + Native SQLite (Live Production Backend API on port 5000)
+├── archive/          Earlier prototype stacks & static UI drafts (Not part of running app)
 ├── dev.js            Full-stack orchestrator
 └── README.md
 ```
 
+> **Note:** `archive/` contains earlier prototype stacks (`backend/`, `frontend/`, `src/`, static HTML files) preserved for reference, and is NOT part of the running application.
+
 ---
 
-## 🚀 Quick Start (Production Module)
+## 🚀 Quick Start (Production Setup)
 
 > **Evaluators: run these commands from the repo root, in order.**
 
@@ -32,9 +30,12 @@ HRM/
 npm run setup
 ```
 
-### 2. Seed the database
+### 2. Import & seed the database (100% offline)
 ```bash
-# Seed realistic attendance history, RBAC personas (Admin, Manager, Employee)
+# Execute pure SQL schema & seed import offline
+npm run db:import
+
+# Seed realistic attendance history, leave requests, and RBAC personas
 npm run seed
 ```
 
@@ -47,49 +48,50 @@ Then open **http://localhost:3000** in your browser.
 
 ### 4. Run Automated Test Suite
 ```bash
-# Executes native test suite (Attendance validation, JWT auth bypass, and timestamp security)
+# Executes native test suite (JWT auth, SQL injection prevention, leave workflow, workforce risk engine)
 npm test
 ```
 
 ---
 
-## ⚡ Attendance, Auth & RBAC Endpoints
+## ⚡ Core API & Security Endpoints
 
 | Method | Endpoint | Access | Description & Security Validation |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/users/login` | Public | Authenticates user, issues signed JWT token, and sets `httpOnly` cookie (`auth_token`). |
+| `POST` | `/api/users/register` | Public | Real user & employee registration with `bcrypt` password hashing and leave balance initialization. |
+| `POST` | `/api/users/login` | Public | Authenticates credentials with `bcrypt`, rate limiting (5 attempts/15m), account lockout, and signed JWT issuance via `httpOnly` cookie. |
 | `POST` | `/api/users/logout` | Public | Clears `httpOnly` authentication cookie. |
 | `GET` | `/api/users/me` | Authenticated | Returns current authenticated user and employee profile. |
 | `GET` | `/api/users` | Admin | Returns full user roster. Enforced by `requireRole('admin')`. |
-| `POST` | `/api/attendance/checkin` | Employee | Clock in for today. Date/time derived strictly from server clock (`new Date()`). Custom timestamp overrides require admin debug flag (`?debug=true`). |
-| `POST` | `/api/attendance/checkout` | Employee | Clock out for today. Server clock enforced. Validates `check_out > check_in` (`400 Bad Request`). Calculates work hours and status. |
+| `POST` | `/api/attendance/checkin` | Employee | Clock in for today. Server clock enforced (`new Date()`). Custom timestamp overrides require admin debug flag (`?debug=true`). |
+| `POST` | `/api/attendance/checkout` | Employee | Clock out for today. Server clock enforced. Validates `check_out > check_in` (`400 Bad Request`). |
 | `GET` | `/api/attendance/today` | Employee | Returns today's active punch and shift status for live widget. |
-| `GET` | `/api/attendance` | Employee | Personal historical attendance records with date/month filtering. |
-| `GET` | `/api/attendance/weekly` | Employee | Current week (Mon-Sun) hours breakdown vs 40h target. |
 | `GET` | `/api/attendance/all` | Admin & Manager | Real-time attendance monitor (Admins see all departments; Managers scoped to team). |
-| `GET` | `/api/attendance/analytics` | All Roles | Attendance %, present/absent/leave counts, late-arrival count, department breakdown, and trends. |
-| `GET` | `/api/users/demo-personas` | Dev / Demo | Returns personas with designation, department, and role badges. |
+| `GET` | `/api/leaves/balance` | Employee | Returns current employee's paid, sick, and unpaid leave balances. |
+| `GET` | `/api/leaves/my` | Employee | Returns current employee's leave applications and status history. |
+| `POST` | `/api/leaves` | Employee | Submits a new leave request. Validates date bounds and available balances. |
+| `GET` | `/api/leaves` | Admin & Manager | Returns all pending and processed leave requests across department. |
+| `PATCH` | `/api/leaves/:id/approve` | Admin & Manager | Approves leave request; auto-syncs employee's attendance records to `leave` status for approved dates. |
+| `PATCH` | `/api/leaves/:id/reject` | Admin & Manager | Rejects leave request with mandatory reviewer comments. |
+| `GET` | `/api/attendance/analytics/workforce-risk` | Admin & Manager | Transparent rule-based Workforce Risk Engine evaluating Monday/Friday absence spikes, sick leave surges, and leave clusters. |
 
 ---
 
 ## 🎯 End-to-End Demo Workflow
 
-1. **Employee Experience**:
-   - Open `http://localhost:3000` (defaults to **Alex Chen** or **Priya Patel**).
-   - Click the green **CHECK IN** button in the Live Punch Hero.
-   - Observe live digital clock and active elapsed shift timer start counting up.
-   - Click **CHECK OUT** to conclude shift and view updated weekly & monthly charts.
+1. **Registration & Auth**:
+   - Register a new account or log in via `http://localhost:3000`.
+   - Passwords are verified via `bcrypt` with consecutive attempt lockouts.
+   - JWT tokens are handled securely via `httpOnly` cookies and `Authorization: Bearer <token>`.
 
-2. **Manager Experience**:
-   - Switch persona or log in as **Marcus Vance (Manager)**.
-   - View **Team Attendance Monitor** locked to the **Design** team.
-   - Review team analytics and punctuality logs.
+2. **Shift Clocking & Attendance**:
+   - Click **CHECK IN** in the Live Punch Hero to start shift timer.
+   - Click **CHECK OUT** to conclude shift and automatically compute work hours.
 
-3. **Admin Experience**:
-   - Switch persona or log in as **Sarah Jenkins (Admin / HR Lead)**.
-   - Access **Company Attendance Monitor** across all departments (Engineering, Design, HR, Sales).
-   - Review organizational headcount, live clock-in roster, and executive analytics.
+3. **Leave Management & Auto-Sync**:
+   - Employee applies for leave via `/employee/leave` -> Server validates date range & leave balance.
+   - Admin reviews pending request on Admin Dashboard -> Approves request.
+   - System automatically marks matching calendar dates as `Leave` in the attendance records.
 
-4. **Authentication & Security**:
-   - Click top-right avatar and choose **Sign out** to clear the `httpOnly` cookie session.
-   - All protected routes return `401 Unauthorized` if accessed without a valid signed JWT.
+4. **Workforce Risk Engine**:
+   - Admin views real-time department risk classification (`LOW`, `MEDIUM`, `HIGH`) and anomaly indicators on the Admin Dashboard.

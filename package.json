@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "setup": "npm install --prefix server && npm install --prefix client",
+    "postinstall": "npm run setup",
     "db:import": "cd server && node src/db/importSql.js",
     "dev": "node dev.js",
     "dev:next": "next dev -p 3000",
