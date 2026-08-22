@@ -1,0 +1,11 @@
+{
+  "name": "dayflow-hrms",
+  "version": "1.0.0",
+  "description": "Dayflow HRMS - Attendance & Workforce Management Module",
+  "scripts": {
+    "dev": "node dev.js",
+    "seed": "cd server && npm run seed",
+    "test": "cd server && npm test",
+    "build": "cd client && npm run build"
+  }
+}
