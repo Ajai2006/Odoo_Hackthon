@@ -1,13 +1,17 @@
 {
   "name": "dayflow-hrms",
   "version": "1.0.0",
-  "description": "Dayflow HRMS - Leave Management Module",
+  "description": "Dayflow HRMS - Enterprise Attendance, Payroll & Workforce Management Module",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "next build",
-    "start": "next start -p 3000",
-    "test:leaves": "node tests/test-leave-flow.js"
+    "dev": "node dev.js",
+    "dev:next": "next dev -p 3000",
+    "seed": "cd server && npm run seed",
+    "test": "cd server && npm test",
+    "test:leaves": "node tests/test-leave-flow.js",
+    "build": "cd client && npm run build",
+    "build:next": "next build",
+    "start": "next start -p 3000"
   },
   "dependencies": {
     "@types/better-sqlite3": "^7.6.12",
