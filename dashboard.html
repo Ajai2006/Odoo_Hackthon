@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Dayflow HRMS</title>
+  <meta name="description" content="Employee dashboard — view your attendance, leave balance, and payslips at a glance.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./components/ui/design-tokens.css">
+  <link rel="stylesheet" href="./components/ui/globals.css">
+  <link rel="stylesheet" href="./components/ui/sidebar.css">
+  <link rel="stylesheet" href="./components/ui/components.css">
+  <style>
+    /* ── Activity Feed ── */
+    .activity-feed { display: flex; flex-direction: column; }
+    .activity-item {
+      display: flex; align-items: flex-start; gap: var(--space-3);
+      padding: var(--space-4) 0;
+      border-bottom: 1px solid var(--border);
+      animation: fadeIn var(--transition-normal) ease;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-dot {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .activity-dot svg { width: 16px; height: 16px; }
+    .activity-dot.success { background: var(--success-bg); color: var(--success); }
+    .activity-dot.warning { background: var(--warning-bg); color: var(--warning); }
+    .activity-dot.info    { background: var(--info-bg);    color: var(--info);    }
+    .activity-dot.danger  { background: var(--danger-bg);  color: var(--danger);  }
+    .activity-content { flex: 1; min-width: 0; }
+    .activity-title { font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--text-primary); }
+    .activity-time  { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 2px; }
+
+    /* ── Payslip Shortcut ── */
+    .payslip-shortcut {
+      background: linear-gradient(135deg, var(--primary-700), var(--primary-500));
+      border-radius: var(--radius-card);
+      padding: var(--space-6);
+      color: white;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer;
+      transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+      text-decoration: none;
+      box-shadow: 0 8px 24px rgba(59,130,246,0.35);
+      margin-bottom: var(--space-6);
+    }
+    .payslip-shortcut:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(59,130,246,0.45); text-decoration: none; }
+
+    .payslip-shortcut-left h3 { color: white; margin-bottom: var(--space-1); }
+    .payslip-shortcut-left p  { font-size: var(--text-sm); opacity: 0.75; margin-bottom: var(--space-3); }
+    .payslip-shortcut-amount  { font-size: var(--text-2xl); font-weight: var(--fw-extrabold); font-variant-numeric: tabular-nums; }
+
+    .payslip-shortcut-icon {
+      width: 60px; height: 60px;
+      background: rgba(255,255,255,0.15);
+      border-radius: var(--radius-card);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .payslip-shortcut-icon svg { width: 28px; height: 28px; color: white; }
+
+    /* ── Attendance ring ── */
+    .attendance-ring-wrap { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+    .ring-svg { transform: rotate(-90deg); }
+    .ring-bg  { fill: none; stroke: var(--bg-muted); stroke-width: 8; }
+    .ring-fg  { fill: none; stroke: var(--success); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+    .ring-label { text-align: center; }
+    .ring-pct   { font-size: var(--text-2xl); font-weight: var(--fw-bold); color: var(--primary-900); }
+
+    .legend-row { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--text-secondary); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Topbar ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: var(--space-8);
+      padding-bottom: var(--space-6);
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar-greeting h2 { font-size: var(--text-2xl); }
+    .topbar-greeting p  { color: var(--text-secondary); font-size: var(--text-sm); margin-top: 2px; }
+    .topbar-actions { display: flex; align-items: center; gap: var(--space-3); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div id="sidebar-mount"></div>
+
+    <main class="main-content" id="main-content">
+      <div class="topbar">
+        <div class="topbar-greeting">
+          <h2 id="greeting-name">Good morning! 👋</h2>
+          <p id="greeting-date">Loading...</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary btn-sm" onclick="DayflowDB.init().then(() => loadDashboard())">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Payslip Shortcut -->
+      <a href="payroll.html" class="payslip-shortcut" id="payslip-shortcut">
+        <div class="payslip-shortcut-left">
+          <h3>August 2026 Payslip</h3>
+          <p>Tap to view full breakdown</p>
+          <div class="payslip-shortcut-amount tabular" id="shortcut-net">₹—</div>
+        </div>
+        <div class="payslip-shortcut-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        </div>
+      </a>
+
+      <!-- Stat Cards -->
+      <div class="grid-cols-4" id="stat-cards" style="margin-bottom:var(--space-8);">
+        <!-- Injected by JS -->
+      </div>
+
+      <!-- 2-col lower section -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);">
+        <!-- Attendance chart -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">August Attendance</h3>
+          </div>
+          <div class="attendance-ring-wrap" id="attendance-ring">
+            <svg width="100" height="100" class="ring-svg">
+              <circle cx="50" cy="50" r="40" class="ring-bg"/>
+              <circle cx="50" cy="50" r="40" class="ring-fg" id="ring-fg"
+                stroke-dasharray="251.2"
+                stroke-dashoffset="251.2"/>
+            </svg>
+            <div>
+              <div class="ring-label" style="margin-bottom:var(--space-3);">
+                <div class="ring-pct" id="att-pct">—%</div>
+                <div class="caption">This month</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:var(--space-2);" id="att-legend"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leave Summary -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Leave Summary</h3>
+            <a href="my-leave.html" class="btn btn-ghost btn-sm">View all →</a>
+          </div>
+          <div id="leave-summary-content">
+            <div class="skeleton" style="height:120px;border-radius:var(--radius-input);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="card" style="margin-top:var(--space-6);">
+        <div class="card-header">
+          <h3 class="card-title">Recent Activity</h3>
+        </div>
+        <div class="activity-feed" id="activity-feed">
+          <div class="skeleton" style="height:60px;margin-bottom:var(--space-3);border-radius:var(--radius-input);"></div>
+          <div class="skeleton" style="height:60px;margin-bottom:var(--space-3);border-radius:var(--radius-input);"></div>
+          <div class="skeleton" style="height:60px;border-radius:var(--radius-input);"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script type="module">
+    import { Sidebar, StatCard, StatusBadge, showToast, Icons, fmtCurrency } from './components/ui/index.js';
+    import { DayflowAuth, DayflowDB } from './components/ui/index.js';
+
+    // Auth guard
+    const user = DayflowAuth.requireAuth();
+    if (!user) throw new Error('Not authenticated');
+    if (user.role === 'admin') { window.location.href = 'admin-dashboard.html'; }
+
+    // Init sidebar
+    Sidebar({ role: 'employee', activeKey: 'dashboard', user: { name: user.name, department: user.department } });
+    document.querySelector('.main-content').style.marginLeft = 'var(--sidebar-width)';
+
+    // Greeting
+    const now  = new Date();
+    const hour = now.getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('greeting-name').textContent = `${greeting}, ${user.name.split(' ')[0]}! 👋`;
+    document.getElementById('greeting-date').textContent = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    async function loadDashboard() {
+      await DayflowDB.init();
+      const empId = user.employee_id;
+
+      // Load data
+      const [todayAtt, payrollList, leaveList] = await Promise.all([
+        DayflowDB.getTodayAttendance(empId),
+        DayflowDB.getPayrollByEmployee(empId),
+        DayflowDB.getLeaveRequests(empId),
+      ]);
+
+      const monthAtt = await DayflowDB.getMonthAttendance(empId, now.getMonth() + 1, now.getFullYear());
+      const emp      = await DayflowDB.getEmployee(empId);
+
+      // Latest payroll
+      const latestPayroll = payrollList.sort((a,b) => b.year - a.year || b.month - a.month)[0];
+      if (latestPayroll) {
+        document.getElementById('shortcut-net').textContent = fmtCurrency(latestPayroll.net_salary);
+        const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        document.querySelector('.payslip-shortcut h3').textContent = `${mNames[latestPayroll.month-1]} ${latestPayroll.year} Payslip`;
+      }
+
+      // Attendance stats
+      const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const daysPassed   = now.getDate();
+      const presentDays  = monthAtt.filter(a => a.status === 'present' || a.status === 'late').length;
+      const absentDays   = monthAtt.filter(a => a.status === 'absent').length;
+      const leaveDays    = monthAtt.filter(a => a.status === 'on-leave').length;
+      const attPct       = daysPassed > 0 ? Math.round((presentDays / daysPassed) * 100) : 0;
+
+      // Pending leaves
+      const pendingLeaves = leaveList.filter(l => l.status === 'pending').length;
+      const leaveBalance  = emp?.leave_balance ?? 0;
+
+      // Stat cards
+      const statContainer = document.getElementById('stat-cards');
+      statContainer.innerHTML = '';
+      const stats = [
+        { title: "Today's Status", value: todayAtt ? (todayAtt.status === 'present' ? 'Present' : todayAtt.status === 'late' ? 'Late' : todayAtt.status) : 'Absent', icon: 'attendance', color: todayAtt?.status === 'present' ? 'success' : todayAtt?.status === 'late' ? 'warning' : 'danger', subtitle: todayAtt?.check_in ? `Check-in: ${todayAtt.check_in}` : 'Not checked in' },
+        { title: 'Month Attendance', value: `${attPct}%`, icon: 'percent', color: attPct >= 80 ? 'success' : attPct >= 60 ? 'warning' : 'danger', subtitle: `${presentDays} of ${daysPassed} days`, trend: { value: `${presentDays} present`, direction: attPct >= 80 ? 'up' : 'down' } },
+        { title: 'Pending Leaves', value: pendingLeaves, icon: 'leave', color: pendingLeaves > 0 ? 'warning' : 'success', subtitle: 'Awaiting approval' },
+        { title: 'Leave Balance', value: leaveBalance, icon: 'calendar', color: leaveBalance > 5 ? 'success' : leaveBalance > 0 ? 'warning' : 'danger', subtitle: 'Days remaining' },
+      ];
+
+      stats.forEach((s, i) => {
+        const card = StatCard(s);
+        card.style.animationDelay = `${i * 0.08}s`;
+        statContainer.appendChild(card);
+      });
+
+      // Attendance ring
+      const circumference = 251.2;
+      const offset = circumference - (attPct / 100) * circumference;
+      document.getElementById('att-pct').textContent = `${attPct}%`;
+      setTimeout(() => { document.getElementById('ring-fg').style.strokeDashoffset = offset; }, 100);
+
+      const ringColor = attPct >= 80 ? 'var(--success)' : attPct >= 60 ? 'var(--warning)' : 'var(--danger)';
+      document.getElementById('ring-fg').style.stroke = ringColor;
+
+      const legend = document.getElementById('att-legend');
+      legend.innerHTML = `
+        <div class="legend-row"><div class="legend-dot" style="background:var(--success);"></div>${presentDays} Present</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--warning);"></div>${monthAtt.filter(a=>a.status==='late').length} Late</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--danger);"></div>${absentDays} Absent</div>
+        <div class="legend-row"><div class="legend-dot" style="background:var(--info);"></div>${leaveDays} On Leave</div>`;
+
+      // Leave summary
+      const leaveSummary = document.getElementById('leave-summary-content');
+      const typeGroups = {};
+      leaveList.forEach(l => {
+        if (!typeGroups[l.type]) typeGroups[l.type] = { total: 0, approved: 0, pending: 0 };
+        typeGroups[l.type].total++;
+        if (l.status === 'approved') typeGroups[l.type].approved++;
+        if (l.status === 'pending')  typeGroups[l.type].pending++;
+      });
+
+      if (Object.keys(typeGroups).length === 0) {
+        leaveSummary.innerHTML = `<div class="empty-state" style="padding:var(--space-8);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px;height:32px;opacity:0.3;"><rect x="3" y="4" width="18" height="18" rx="2"/></svg><p>No leave requests</p></div>`;
+      } else {
+        leaveSummary.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-3);background:var(--bg-muted);border-radius:var(--radius-input);">
+              <span style="font-size:var(--text-sm);font-weight:var(--fw-semibold);">Balance</span>
+              <span style="font-size:var(--text-xl);font-weight:var(--fw-bold);color:var(--primary-700);">${leaveBalance} days</span>
+            </div>
+            ${Object.entries(typeGroups).map(([type, g]) => `
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="caption">${type}</span>
+                <div style="display:flex;gap:var(--space-2);">
+                  ${g.approved ? `<span class="status-badge approved sm">${Icons.check}<span>${g.approved} approved</span></span>` : ''}
+                  ${g.pending  ? `<span class="status-badge pending sm">${Icons.alert}<span>${g.pending} pending</span></span>` : ''}
+                </div>
+              </div>`).join('')}
+          </div>`;
+      }
+
+      // Activity feed
+      const activities = [
+        ...leaveList.sort((a,b) => new Date(b.applied_at)-new Date(a.applied_at)).slice(0,3).map(l => ({
+          title: `Leave request (${l.type}) — ${l.status}`,
+          time: new Date(l.applied_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+          type: l.status === 'approved' ? 'success' : l.status === 'rejected' ? 'danger' : 'warning',
+          icon: 'leave'
+        })),
+        ...monthAtt.slice(-3).map(a => ({
+          title: `Marked ${a.status} on ${new Date(a.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`,
+          time: a.check_in || '—',
+          type: a.status === 'present' ? 'success' : a.status === 'late' ? 'warning' : 'danger',
+          icon: 'attendance'
+        })),
+        latestPayroll ? {
+          title: `Payslip for ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][latestPayroll.month-1]} ${latestPayroll.year} generated`,
+          time: new Date(latestPayroll.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+          type: 'info', icon: 'payroll'
+        } : null
+      ].filter(Boolean).slice(0, 6);
+
+      const feed = document.getElementById('activity-feed');
+      feed.innerHTML = activities.length ? activities.map(a => `
+        <div class="activity-item animate-fadeIn">
+          <div class="activity-dot ${a.type}">${Icons[a.icon] || Icons.activity}</div>
+          <div class="activity-content">
+            <div class="activity-title">${a.title}</div>
+            <div class="activity-time">${a.time}</div>
+          </div>
+        </div>`).join('') :
+        `<div class="empty-state"><p>No recent activity</p></div>`;
+    }
+
+    loadDashboard().catch(err => {
+      showToast('Failed to load dashboard: ' + err.message, 'error');
+    });
+
+    // Expose for refresh button
+    window.DayflowDB   = DayflowDB;
+    window.loadDashboard = loadDashboard;
+  </script>
+</body>
+</html>
