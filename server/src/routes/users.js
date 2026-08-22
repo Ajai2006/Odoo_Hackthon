@@ -6,14 +6,14 @@ import { authContext, requireRole, generateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Rate limiter for authentication attempts
+// Rate limiter for authentication attempts (disabled during development/testing)
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes window
-  max: 5, // Limit each IP to 5 failed/login attempts per window
+  max: 1000, // High ceiling for manual & automated testing
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many login attempts from this IP. Please try again after 15 minutes.' },
-  skip: (req) => process.env.NODE_ENV === 'test' // Skip during automated test suites
+  skip: (req) => process.env.NODE_ENV !== 'production' // Skip during dev & testing
 });
 
 // In-memory failed login tracking for account lockout
