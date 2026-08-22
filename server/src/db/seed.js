@@ -16,18 +16,20 @@ export function seedDatabase() {
 
   // 1. Insert Users (Admin + Employees)
   const insertUser = db.prepare(`
-    INSERT INTO users (id, name, email, role, avatar)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO users (id, name, email, password_hash, role, avatar)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
+  const defaultPasswordHash = '$2b$10$cBJ4yfKqFaXduCkUANofpu1aei7rksxxXYZTfsVFitzZ/0uPX5IlK'; // Password123!
+
   const usersData = [
-    [1, 'Sarah Jenkins', 'sarah.jenkins@dayflow.io', 'admin', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'],
-    [2, 'Alex Chen', 'alex.chen@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'],
-    [3, 'Priya Patel', 'priya.patel@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'],
-    [4, 'Marcus Vance', 'marcus.vance@dayflow.io', 'manager', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'],
-    [5, 'Elena Rostova', 'elena.rostova@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80'],
-    [6, 'David Kim', 'david.kim@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'],
-    [7, 'Fatima Al-Mansoor', 'fatima.m@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80']
+    [1, 'Sarah Jenkins', 'sarah.jenkins@dayflow.io', defaultPasswordHash, 'admin', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'],
+    [2, 'Alex Chen', 'alex.chen@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'],
+    [3, 'Priya Patel', 'priya.patel@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'],
+    [4, 'Marcus Vance', 'marcus.vance@dayflow.io', defaultPasswordHash, 'manager', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'],
+    [5, 'Elena Rostova', 'elena.rostova@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80'],
+    [6, 'David Kim', 'david.kim@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'],
+    [7, 'Fatima Al-Mansoor', 'fatima.m@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80']
   ];
 
   for (const u of usersData) {

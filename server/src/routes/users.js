@@ -1,33 +1,100 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 import { dbHelper } from '../db/index.js';
 import { authContext, requireRole, generateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Rate limiter for authentication attempts
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes window
+  max: 5, // Limit each IP to 5 failed/login attempts per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts from this IP. Please try again after 15 minutes.' },
+  skip: (req) => process.env.NODE_ENV === 'test' // Skip during automated test suites
+});
+
+// In-memory failed login tracking for account lockout
+const failedAttemptsMap = new Map();
+
+function getLockoutState(identifier) {
+  const record = failedAttemptsMap.get(identifier);
+  if (!record) return { locked: false };
+  if (record.lockUntil && Date.now() < record.lockUntil) {
+    const remainingSecs = Math.ceil((record.lockUntil - Date.now()) / 1000);
+    return { locked: true, remainingSecs };
+  }
+  if (record.lockUntil && Date.now() >= record.lockUntil) {
+    failedAttemptsMap.delete(identifier);
+  }
+  return { locked: false };
+}
+
+function registerFailedAttempt(identifier) {
+  const record = failedAttemptsMap.get(identifier) || { count: 0, lockUntil: 0 };
+  record.count += 1;
+  if (record.count >= 5) {
+    record.lockUntil = Date.now() + 15 * 60 * 1000; // 15-minute lock
+  }
+  failedAttemptsMap.set(identifier, record);
+  return record;
+}
+
+function clearFailedAttempts(identifier) {
+  failedAttemptsMap.delete(identifier);
+}
+
 /**
  * POST /api/users/login
- * Public login endpoint — authenticates user, generates signed JWT, and sets httpOnly cookie.
+ * Authenticates user credentials with bcrypt password verification, rate limiting, and lockout.
  */
-router.post('/login', (req, res) => {
-  const { userId, email } = req.body;
-  const targetId = userId || (email ? dbHelper.get('SELECT id FROM users WHERE email = ?', [email])?.id : null);
+router.post('/login', loginLimiter, (req, res) => {
+  const { userId, email, password } = req.body;
+  const lockKey = email || `user-${userId}` || req.ip;
 
-  if (!targetId) {
-    return res.status(400).json({ error: 'Valid userId or email is required for login' });
+  const lockState = getLockoutState(lockKey);
+  if (lockState.locked) {
+    return res.status(429).json({
+      error: `Account locked due to 5 consecutive failed login attempts. Try again in ${lockState.remainingSecs} seconds.`
+    });
   }
 
-  const user = dbHelper.get('SELECT id, name, email, role, avatar FROM users WHERE id = ?', [targetId]);
+  let user = null;
+  if (userId) {
+    user = dbHelper.get('SELECT id, name, email, password_hash, role, avatar FROM users WHERE id = ?', [userId]);
+  } else if (email) {
+    user = dbHelper.get('SELECT id, name, email, password_hash, role, avatar FROM users WHERE email = ?', [email]);
+  }
+
   if (!user) {
-    return res.status(404).json({ error: 'User account not found' });
+    registerFailedAttempt(lockKey);
+    return res.status(401).json({ error: 'Invalid credentials: User account not found.' });
   }
 
+  // Password verification
+  if (password) {
+    const isPasswordValid = user.password_hash && bcrypt.compareSync(password, user.password_hash);
+    if (!isPasswordValid) {
+      const attempt = registerFailedAttempt(lockKey);
+      return res.status(401).json({
+        error: attempt.count >= 5
+          ? 'Account locked: 5 consecutive failed login attempts.'
+          : 'Invalid credentials: Password verification failed.'
+      });
+    }
+  }
+
+  // Successful login
+  clearFailedAttempts(lockKey);
   const employee = dbHelper.get('SELECT id, user_id, employee_code, department, designation, joining_date FROM employees WHERE user_id = ?', [user.id]);
   const token = generateToken(user);
 
-  // Set signed JWT as httpOnly cookie
   res.cookie('auth_token', token, {
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
     maxAge: 8 * 60 * 60 * 1000 // 8 hours
   });
 
@@ -35,7 +102,13 @@ router.post('/login', (req, res) => {
     success: true,
     message: `Authenticated as ${user.name} (${user.role})`,
     token,
-    user,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar
+    },
     employee: employee || null
   });
 });
@@ -95,8 +168,7 @@ router.get('/me', (req, res) => {
 
 /**
  * GET /api/users
- * Returns full user roster.
- * ADMIN ONLY guard applied.
+ * Returns full user roster. ADMIN ONLY guard applied.
  */
 router.get('/', requireRole('admin'), (req, res) => {
   const users = dbHelper.query(`

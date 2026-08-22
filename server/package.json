@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed": "node src/db/seed.js",
+    "db:import": "node src/db/importSql.js",
     "test": "cross-env NODE_ENV=test node --test --test-concurrency=1 tests/*.test.js"
   },
   "dependencies": {

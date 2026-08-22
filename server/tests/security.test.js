@@ -98,3 +98,42 @@ test('Security - Admin debug flag allows controlled timestamp overrides for test
   assert.strictEqual(adminDebugRes.status, 201, 'Admin debug mode allows timestamp override for testing');
   assert.strictEqual(adminDebugRes.body.attendance.date, '2026-08-22');
 });
+
+test('Security - Password verification with bcrypt succeeds for correct password and fails for incorrect', async () => {
+  // Correct password
+  const validRes = await request(app)
+    .post('/api/users/login')
+    .send({ email: 'alex.chen@dayflow.io', password: 'Password123!' });
+
+  assert.strictEqual(validRes.status, 200);
+  assert.strictEqual(validRes.body.user.email, 'alex.chen@dayflow.io');
+
+  // Incorrect password
+  const invalidRes = await request(app)
+    .post('/api/users/login')
+    .send({ email: 'alex.chen@dayflow.io', password: 'WrongPassword99!' });
+
+  assert.strictEqual(invalidRes.status, 401);
+  assert.ok(invalidRes.body.error.includes('Password verification failed'));
+});
+
+test('Security - Account lockout triggers after 5 consecutive failed login attempts', async () => {
+  const targetEmail = 'lockout.test@dayflow.io';
+
+  // 5 failed attempts
+  for (let i = 0; i < 5; i++) {
+    const res = await request(app)
+      .post('/api/users/login')
+      .send({ email: targetEmail, password: 'WrongPassword' });
+
+    assert.strictEqual(res.status, 401);
+  }
+
+  // 6th attempt must be locked out with 429
+  const lockedRes = await request(app)
+    .post('/api/users/login')
+    .send({ email: targetEmail, password: 'Password123!' });
+
+  assert.strictEqual(lockedRes.status, 429);
+  assert.ok(lockedRes.body.error.includes('Account locked'));
+});

@@ -1,18 +1,22 @@
 -- Dayflow HRMS SQLite Schema
--- Enable Foreign Key constraints
+PRAGMA foreign_keys = OFF;
+DROP TABLE IF EXISTS attendance;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS users;
 PRAGMA foreign_keys = ON;
 
--- Users table (Stubbed for Member 1 auth dependency)
+-- Users table with password_hash column for secure authentication
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
+    password_hash TEXT,
     role TEXT CHECK(role IN ('admin', 'employee', 'manager')) NOT NULL DEFAULT 'employee',
     avatar TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Employees table (Stubbed for Member 1 dependency: {id, user_id, department, designation})
+-- Employees table
 CREATE TABLE IF NOT EXISTS employees (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL UNIQUE,
@@ -24,7 +28,7 @@ CREATE TABLE IF NOT EXISTS employees (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Attendance table (Core Module Scope)
+-- Attendance table
 CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     employee_id INTEGER NOT NULL,
@@ -40,7 +44,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     CONSTRAINT uq_employee_date UNIQUE (employee_id, date)
 );
 
--- Indexes for lightning fast lookups & analytical queries
+-- Indexes for performance & analytical queries
 CREATE INDEX IF NOT EXISTS idx_attendance_employee_date ON attendance(employee_id, date);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_status ON attendance(status);
