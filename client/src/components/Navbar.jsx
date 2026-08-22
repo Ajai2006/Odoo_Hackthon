@@ -181,8 +181,30 @@ export function AppShell({ currentUser, usersList, activeTab, setActiveTab, onUs
 
                   <div className="divider" />
 
-                  {/* Role / Persona Switcher */}
-                  <div className="dropdown-section-label">Switch Persona</div>
+                  {/* ⚠️  DEV-ONLY persona switcher — blocked in production by API */}
+                  <div style={{
+                    padding:'var(--sp-2) var(--sp-4)',
+                    background:'rgba(245,158,11,0.07)',
+                    borderTop:'1px solid rgba(245,158,11,0.25)',
+                    display:'flex',
+                    alignItems:'center',
+                    gap:'var(--sp-2)'
+                  }}>
+                    <span style={{
+                      fontSize:10,
+                      fontWeight:700,
+                      textTransform:'uppercase',
+                      letterSpacing:'0.08em',
+                      background:'var(--warning)',
+                      color:'#fff',
+                      padding:'1px 6px',
+                      borderRadius:'var(--r-btn)',
+                      flexShrink:0
+                    }}>DEV ONLY</span>
+                    <span style={{ fontSize:11, color:'#92400E', fontWeight:500 }}>
+                      Switch persona (demo tool — not real auth)
+                    </span>
+                  </div>
                   {usersList.map(u => (
                     <button
                       key={u.id}

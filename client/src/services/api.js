@@ -36,7 +36,8 @@ async function request(endpoint, options = {}) {
 
 export const api = {
   // Users & Auth
-  getUsers: () => request('/api/users'),
+  // getDemoPersonas — returns only {id, name, role, avatar, department}; blocked in production
+  getDemoPersonas: () => request('/api/users/demo-personas'),
   getCurrentUser: () => request('/api/users/me'),
 
   // Attendance Endpoints

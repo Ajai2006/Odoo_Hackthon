@@ -53,8 +53,9 @@ export function App() {
   /* Load users list + current user */
   const loadUser = async (userIdOverride) => {
     try {
-      const usersRes = await api.getUsers();
-      const list     = usersRes.users || [];
+      // Use dev-only endpoint: returns minimal fields, blocked in production
+      const personasRes = await api.getDemoPersonas();
+      const list        = personasRes.personas || [];
       setUsersList(list);
 
       if (userIdOverride) setCurrentUserId(userIdOverride);
