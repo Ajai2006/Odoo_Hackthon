@@ -43,7 +43,6 @@ export function AppShell({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen]             = useState(false);
   const [dropdownOpen, setDropdownOpen]         = useState(false);
-  const [switcherModalOpen, setSwitcherModalOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   const role = currentUser?.role || 'employee';
@@ -227,29 +226,23 @@ export function AppShell({
                     </div>
                   </div>
 
-                  {/* Switch Account / Persona Option */}
-                  <button 
-                    className="dropdown-item" 
-                    onClick={() => { setDropdownOpen(false); setSwitcherModalOpen(true); }}
-                    role="menuitem"
-                  >
-                    <RefreshCw size={16} color="var(--primary-500)" />
-                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start' }}>
-                      <span style={{ fontSize:13, fontWeight:600 }}>Switch Role / Account</span>
-                      <span style={{ fontSize:11, color:'var(--text-secondary)' }}>Switch between Admin, Manager & Employee</span>
-                    </div>
-                  </button>
+                  {/* Employee Code */}
+                  <div style={{ padding: '0.5rem 0.75rem', fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Shield size={11} />
+                    <span>{currentUser?.employee?.employee_code || 'Employee'}</span>
+                    <span>· {department}</span>
+                  </div>
 
                   <div className="divider" />
 
-                  {/* Sign out */}
+                  {/* Sign out — only action available, no user switching */}
                   <button 
                     className="dropdown-item danger" 
                     onClick={() => { setDropdownOpen(false); if (onSignOut) onSignOut(); }}
                     role="menuitem"
                   >
                     <LogOut size={16} />
-                    <span>Sign out</span>
+                    <span>Sign out of Dayflow HRMS</span>
                   </button>
                 </div>
               )}
@@ -263,75 +256,7 @@ export function AppShell({
         </main>
       </div>
 
-      {/* ---- ROLE & ACCOUNT SWITCHER MODAL ---- */}
-      {switcherModalOpen && (
-        <div className="modal-overlay" onClick={() => setSwitcherModalOpen(false)}>
-          <div className="modal-content switcher-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-header-title">
-                <ShieldCheck size={20} className="modal-icon" />
-                <div>
-                  <h3>Switch Role & Access Profile</h3>
-                  <p>Experience the HRMS interface from different operational perspectives</p>
-                </div>
-              </div>
-              <button className="modal-close-btn" onClick={() => setSwitcherModalOpen(false)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="switcher-cards-container">
-              {usersList.map(u => {
-                const isCurrent = currentUser?.id === u.id;
-                const badge = u.role === 'admin' 
-                  ? 'badge-admin' 
-                  : u.role === 'manager' 
-                    ? 'badge-manager' 
-                    : 'badge-employee';
-
-                return (
-                  <div
-                    key={u.id}
-                    className={`switcher-user-card ${u.role} ${isCurrent ? 'selected' : ''}`}
-                    onClick={() => handleSwitchUser(u.id)}
-                  >
-                    <div className="switcher-card-left">
-                      {u.avatar ? (
-                        <img src={u.avatar} alt={u.name} className="switcher-avatar" />
-                      ) : (
-                        <div className="switcher-avatar fallback">{u.name?.[0]}</div>
-                      )}
-                      <div>
-                        <div className="switcher-user-name">
-                          {u.name} {isCurrent && <span className="current-indicator">(Current)</span>}
-                        </div>
-                        <div className="switcher-user-details">
-                          {u.designation || 'Staff'} · {u.department || 'Dayflow'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="switcher-card-right">
-                      <span className={`role-pill ${badge}`}>
-                        {u.role.toUpperCase()}
-                      </span>
-                      <button className="switcher-select-btn">
-                        {isCurrent ? 'Active' : 'Switch'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="modal-footer">
-              <span className="modal-security-note">
-                <Lock size={12} /> RBAC permissions automatically adjust sidebar and data access based on chosen role.
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Account switcher modal removed — users must Sign Out and log in again for privacy */}
     </div>
   );
 }

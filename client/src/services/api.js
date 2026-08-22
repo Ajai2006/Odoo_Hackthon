@@ -1,5 +1,6 @@
 // API Client for Dayflow Attendance Service
-let inMemoryToken = localStorage.getItem('auth_token') || null;
+// Always start fresh — do NOT restore token from localStorage so Login is enforced on every load
+let inMemoryToken = null;
 
 export function setAuthToken(token) {
   inMemoryToken = token;
