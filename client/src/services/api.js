@@ -1,5 +1,4 @@
 // API Client for Dayflow Attendance Service
-// Always start fresh — do NOT restore token from localStorage so Login is enforced on every load
 let inMemoryToken = null;
 
 export function setAuthToken(token) {
@@ -89,7 +88,27 @@ export const api = {
   getAnalytics: (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return request(`/api/attendance/analytics${query ? `?${query}` : ''}`);
-  }
+  },
+
+  // Leave Management Endpoints
+  getLeaveBalance: () => request('/api/leaves/balance'),
+  getMyLeaves: () => request('/api/leaves/my'),
+  applyLeave: (payload) => request('/api/leaves', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  getAllLeaves: () => request('/api/leaves'),
+  approveLeave: (id, reviewer_notes = 'Approved by reviewer') => request(`/api/leaves/${id}/approve`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reviewer_notes })
+  }),
+  rejectLeave: (id, reviewer_notes = 'Rejected by reviewer') => request(`/api/leaves/${id}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reviewer_notes })
+  }),
+
+  // Risk Engine Endpoint
+  getWorkforceRisk: (department = '') => request(`/api/attendance/analytics/workforce-risk${department ? `?department=${department}` : ''}`)
 };
 
 export default api;

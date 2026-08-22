@@ -6,6 +6,8 @@ import { CalendarView } from './components/CalendarView';
 import { HistoryTable } from './components/HistoryTable';
 import { AdminMonitor } from './components/AdminMonitor';
 import { AnalyticsView }from './components/AnalyticsView';
+import { LeaveManager } from './components/LeaveManager';
+import { WorkforceRiskWidget } from './components/WorkforceRiskWidget';
 import { LoginPortal }  from './components/LoginPortal';
 import { api } from './services/api';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
@@ -108,9 +110,17 @@ export function App() {
   /* Initial mount */
   useEffect(() => {
     (async () => {
-      const u = await loadUser();
-      if (u) {
-        await loadAttendance();
+      const isAuthSession = sessionStorage.getItem('is_authenticated_session');
+      if (isAuthSession === 'true') {
+        const u = await loadUser();
+        if (u) {
+          await loadAttendance();
+        } else {
+          setCurrentUser(null);
+        }
+      } else {
+        try { await api.logout(); } catch (e) {}
+        setCurrentUser(null);
       }
       setAppLoading(false);
     })();
@@ -119,6 +129,7 @@ export function App() {
   /* User persona / role switch */
   const handleUserChange = async (newUserId) => {
     setAppLoading(true);
+    sessionStorage.setItem('is_authenticated_session', 'true');
     const updatedUser = await loadUser(newUserId);
     if (updatedUser) {
       await loadAttendance();
@@ -136,11 +147,13 @@ export function App() {
   const handleLoginUser = async (userId) => {
     setAppLoading(true);
     setIsSignedOut(false);
+    sessionStorage.setItem('is_authenticated_session', 'true');
     await handleUserChange(userId);
   };
 
   /* Sign out */
   const handleSignOut = async () => {
+    sessionStorage.removeItem('is_authenticated_session');
     try {
       await api.logout();
     } catch (e) {
@@ -174,6 +187,14 @@ export function App() {
         ? 'Real-time attendance tracking across all company departments and employee records.'
         : `Real-time shift compliance and attendance roster for ${currentUser?.employee?.department || 'your'} team.`,
     },
+    leaves: {
+      title: canAccessMonitor
+        ? 'Leave Approvals Queue & Attendance Auto-Sync'
+        : 'My Leave Balances & Time Off Applications',
+      desc: canAccessMonitor
+        ? 'Review pending time off applications across your team. Approved leaves automatically update employee attendance calendars.'
+        : 'Check your remaining paid, sick, and unpaid leave balances and submit time off applications.',
+    },
     analytics: {
       title: isAdmin 
         ? 'Workforce Intelligence & Analytics' 
@@ -193,6 +214,7 @@ export function App() {
   const handleLoginSuccess = async (user) => {
     setAppLoading(true);
     setIsSignedOut(false);
+    sessionStorage.setItem('is_authenticated_session', 'true');
     const updatedUser = await loadUser();
     if (updatedUser) {
       await loadAttendance();
@@ -275,9 +297,20 @@ export function App() {
 
             {/* ── ADMIN / MANAGER MONITOR TAB ── */}
             {activeTab === 'admin' && canAccessMonitor && (
-              <AdminMonitor 
-                currentUser={currentUser} 
-                showToast={showToast} 
+              <>
+                <WorkforceRiskWidget department={isManager ? currentUser?.employee?.department : ''} />
+                <AdminMonitor 
+                  currentUser={currentUser} 
+                  showToast={showToast} 
+                />
+              </>
+            )}
+
+            {/* ── LEAVE MANAGEMENT TAB ── */}
+            {activeTab === 'leaves' && (
+              <LeaveManager
+                currentUser={currentUser}
+                showToast={showToast}
               />
             )}
 

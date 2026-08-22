@@ -12,6 +12,7 @@ const GET_NAV_ITEMS = (role, department) => {
     return [
       { id: 'attendance', label: 'My Attendance', icon: Clock },
       { id: 'admin',      label: 'Company Monitor', icon: ShieldCheck },
+      { id: 'leaves',     label: 'Leave Approvals Queue', icon: CalendarDays },
       { id: 'analytics',  label: 'Workforce Analytics', icon: BarChart3 },
     ];
   }
@@ -20,6 +21,7 @@ const GET_NAV_ITEMS = (role, department) => {
     return [
       { id: 'attendance', label: 'My Attendance', icon: Clock },
       { id: 'admin',      label: `Team Monitor (${department || 'Team'})`, icon: Users },
+      { id: 'leaves',     label: 'Team Leave Reviews', icon: CalendarDays },
       { id: 'analytics',  label: 'Team Analytics', icon: BarChart3 },
     ];
   }
@@ -27,6 +29,7 @@ const GET_NAV_ITEMS = (role, department) => {
   // Regular Employee
   return [
     { id: 'attendance', label: 'My Attendance', icon: Clock },
+    { id: 'leaves',     label: 'My Leaves & Time Off', icon: CalendarDays },
     { id: 'analytics',  label: 'My Analytics', icon: BarChart3 },
   ];
 };
@@ -71,6 +74,11 @@ export function AppShell({
     admin: role === 'admin' 
       ? 'Company Attendance Monitor' 
       : `Team Attendance Monitor — ${department}`,
+    leaves: role === 'admin'
+      ? 'Leave Approvals Queue & Attendance Auto-Sync'
+      : role === 'manager'
+        ? `Team Leave Approvals (${department})`
+        : 'My Leave Balances & Time Off Applications',
     analytics: role === 'admin' 
       ? 'Workforce Intelligence & Analytics' 
       : role === 'manager' 
