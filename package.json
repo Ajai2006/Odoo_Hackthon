@@ -1,7 +1,7 @@
 {
   "name": "dayflow-hrms",
   "version": "1.0.0",
-  "description": "Dayflow HRMS - Enterprise Attendance, Payroll & Workforce Management Module",
+  "description": "Dayflow HRMS - Enterprise Attendance & Workforce Management System (Odoo Hackathon 2026)",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,27 +9,10 @@
     "postinstall": "npm run setup",
     "db:import": "cd server && node src/db/importSql.js",
     "db:check": "cd server && node src/db/checkDb.js",
-    "dev": "node dev.js",
-    "dev:next": "next dev -p 3000",
     "seed": "cd server && npm run seed",
+    "dev": "node dev.js",
     "test": "cd server && npm test",
-    "test:leaves": "node tests/test-leave-flow.js",
     "build": "cd client && npm run build",
-    "build:next": "next build",
-    "start": "next start -p 3000"
-  },
-  "dependencies": {
-    "@types/node": "^22.10.2",
-    "@types/react": "^19.0.2",
-    "@types/react-dom": "^19.0.2",
-    "lucide-react": "^0.469.0",
-    "next": "^15.1.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
-    "@types/sql.js": "^1.4.11",
-    "sql.js": "^1.14.2",
-    "typescript": "5.7.2"
+    "preview": "cd client && npm run preview"
   }
 }
