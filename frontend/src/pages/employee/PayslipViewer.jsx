@@ -3,7 +3,7 @@
  * Route: /employee/payslip
  */
 import React, { useState, useEffect, useCallback } from 'react'
-import { FileText, Download, ChevronLeft, ChevronRight, TrendingUp, Minus } from 'lucide-react'
+import { FileText, ChevronLeft, ChevronRight, TrendingUp, Minus } from 'lucide-react'
 import { clsx } from 'clsx'
 import api from '@/services/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -121,7 +121,7 @@ export default function PayslipViewer() {
           {loading && (
             <div className="space-y-3">
               {Array.from({length: 8}).map((_, i) => (
-                <div key={i} className="skeleton h-5 rounded" style={{width: `${50 + Math.random()*40}%`}} />
+                <div key={i} className="skeleton h-5 rounded" style={{width: `${50 + ((i * 13) % 40)}%`}} />
               ))}
             </div>
           )}

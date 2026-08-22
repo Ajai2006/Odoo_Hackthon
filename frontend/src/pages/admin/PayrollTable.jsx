@@ -3,10 +3,10 @@
  * Route: /admin/payroll
  */
 import React, { useState, useEffect, useCallback } from 'react'
-import { Plus, Edit2, Eye, AlertCircle, CheckCircle } from 'lucide-react'
+import { Plus, Edit2, AlertCircle, CheckCircle } from 'lucide-react'
 import { clsx } from 'clsx'
 import api from '@/services/api'
-import { DataTable, Modal, StatusBadge } from '@/components/ui'
+import { DataTable, Modal } from '@/components/ui'
 
 const MONTHS = ['','January','February','March','April','May','June',
   'July','August','September','October','November','December']
@@ -46,7 +46,6 @@ function FieldRow({ label, name, value, onChange, type = 'number', required = fa
 
 export default function PayrollTable() {
   const [records, setRecords] = useState([])
-  const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalMode, setModalMode] = useState(null)   // 'create' | 'edit' | 'view'
   const [selected, setSelected] = useState(null)
