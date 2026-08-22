@@ -1,8 +1,13 @@
 // API Client for Dayflow Attendance Service
-let inMemoryToken = null;
+let inMemoryToken = localStorage.getItem('auth_token') || null;
 
 export function setAuthToken(token) {
   inMemoryToken = token;
+  if (token) {
+    localStorage.setItem('auth_token', token);
+  } else {
+    localStorage.removeItem('auth_token');
+  }
 }
 
 export function getAuthToken() {
@@ -29,6 +34,10 @@ async function request(endpoint, options = {}) {
     if (!res.ok) {
       throw new Error(data.error || `HTTP error ${res.status}`);
     }
+
+    if (data.token) {
+      setAuthToken(data.token);
+    }
     
     return data;
   } catch (err) {
@@ -45,9 +54,14 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ userId })
   }),
-  logout: () => request('/api/users/logout', {
-    method: 'POST'
+  loginCredentials: (email, password) => request('/api/users/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password })
   }),
+  logout: () => {
+    setAuthToken(null);
+    return request('/api/users/logout', { method: 'POST' });
+  },
 
   // Attendance Endpoints
   getTodayStatus: () => request('/api/attendance/today'),

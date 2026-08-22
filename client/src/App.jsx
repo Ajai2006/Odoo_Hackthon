@@ -190,6 +190,22 @@ export function App() {
 
   const meta = PAGE_META[activeTab] || PAGE_META.attendance;
 
+  const handleLoginSuccess = async (user) => {
+    setAppLoading(true);
+    setIsSignedOut(false);
+    const updatedUser = await loadUser();
+    if (updatedUser) {
+      await loadAttendance();
+      if (updatedUser.role === 'admin' || updatedUser.role === 'manager') {
+        setActiveTab('admin');
+      } else {
+        setActiveTab('attendance');
+      }
+      showToast('Authentication Successful', `Welcome back, ${updatedUser.name}! (${updatedUser.role.toUpperCase()})`, 'success');
+    }
+    setAppLoading(false);
+  };
+
   // Show Login Portal if signed out or no authenticated user
   if (!appLoading && (isSignedOut || !currentUser)) {
     return (
@@ -198,6 +214,7 @@ export function App() {
         <LoginPortal 
           usersList={usersList} 
           onSelectUser={handleLoginUser} 
+          onLoginSuccess={handleLoginSuccess}
         />
       </>
     );

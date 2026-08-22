@@ -14,12 +14,24 @@ const schemaPath = path.join(__dirname, 'schema.sql');
 
 export const db = new DatabaseSync(dbPath);
 
-// Enable Foreign Key enforcement in SQLite
+// Enable Foreign Keys, WAL mode, and busy timeout for concurrent safety
 db.exec('PRAGMA foreign_keys = ON;');
+db.exec('PRAGMA journal_mode = WAL;');
+db.exec('PRAGMA busy_timeout = 5000;');
 
 export function initDb() {
-  const schema = fs.readFileSync(schemaPath, 'utf8');
-  db.exec(schema);
+  // Only execute schema initialization if users table doesn't exist yet
+  try {
+    const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
+    if (!tableCheck) {
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      db.exec(schema);
+    }
+  } catch (e) {
+    // Fallback if check fails
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    db.exec(schema);
+  }
   return db;
 }
 
