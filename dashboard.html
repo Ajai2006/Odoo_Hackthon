@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Dashboard — Dayflow HRMS</title>
+  <meta name="description" content="Dayflow HRMS Employee Dashboard — attendance, leave balance, payslip, and recent activities.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./components/ui/design-tokens.css">
+  <link rel="stylesheet" href="./components/ui/globals.css">
+  <link rel="stylesheet" href="./components/ui/sidebar.css">
+  <link rel="stylesheet" href="./components/ui/components.css">
+  <style>
+    /* Quick Actions Row */
+    .quick-actions-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+      flex-wrap: wrap;
+    }
+
+    .action-card-btn {
+      flex: 1;
+      min-width: 220px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: var(--space-4) var(--space-6);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+      box-shadow: var(--shadow-sm);
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .action-card-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary-300);
+      background: var(--primary-50);
+      text-decoration: none;
+    }
+
+    .action-card-left { display: flex; align-items: center; gap: var(--space-3); }
+    .action-card-icon {
+      width: 40px; height: 40px; border-radius: var(--radius-input);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .action-card-icon svg { width: 20px; height: 20px; }
+
+    /* Payslip Shortcut Card */
+    .payslip-shortcut-card {
+      background: linear-gradient(135deg, var(--primary-700), var(--primary-900));
+      border-radius: var(--radius-card);
+      padding: var(--space-6);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-6);
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .payslip-shortcut-card::after {
+      content: '';
+      position: absolute; right: -20px; bottom: -20px;
+      width: 140px; height: 140px; border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+    }
+
+    .payslip-info { position: relative; z-index: 1; }
+    .payslip-info h3 { color: white; margin-bottom: 2px; font-size: var(--text-lg); }
+    .payslip-info p { color: rgba(255,255,255,0.7); font-size: var(--text-sm); margin-bottom: var(--space-2); }
+    .payslip-amount { font-size: var(--text-3xl); font-weight: var(--fw-extrabold); font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div id="sidebar-mount"></div>
+
+    <main class="main-content" id="main-content">
+      <!-- Topbar with Search, Notification Bell, Avatar Dropdown -->
+      <div id="topbar-mount"></div>
+
+      <!-- Quick Action Row -->
+      <div class="quick-actions-row">
+        <button class="action-card-btn" id="checkin-btn" onclick="toggleCheckIn()">
+          <div class="action-card-left">
+            <div class="action-card-icon" style="background:var(--success-bg);color:var(--success);" id="checkin-icon-bg">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:var(--fw-semibold);font-size:var(--text-sm);" id="checkin-title">Check In Today</div>
+              <div class="caption" id="checkin-sub">Click to record attendance</div>
+            </div>
+          </div>
+          <span class="btn btn-primary btn-sm" id="checkin-action-label">Check In</span>
+        </button>
+
+        <button class="action-card-btn" onclick="openApplyLeaveModal()">
+          <div class="action-card-left">
+            <div class="action-card-icon" style="background:var(--warning-bg);color:var(--warning);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:var(--fw-semibold);font-size:var(--text-sm);">Apply for Leave</div>
+              <div class="caption">Request time off</div>
+            </div>
+          </div>
+          <span class="btn btn-secondary btn-sm">Apply</span>
+        </button>
+      </div>
+
+      <!-- 4-Up StatCard Grid -->
+      <div class="grid-cols-4" id="stat-cards" style="margin-bottom:var(--space-6);">
+        <!-- Injected by JS -->
+      </div>
+
+      <!-- Payslip Shortcut Card -->
+      <div class="payslip-shortcut-card">
+        <div class="payslip-info">
+          <div class="label" style="color:rgba(255,255,255,0.7);margin-bottom:4px;">Latest Payslip · August 2026</div>
+          <div class="payslip-amount tabular" id="shortcut-net-val">₹—</div>
+          <p style="margin-top:4px;">Net Salary credited for August pay cycle</p>
+        </div>
+        <a href="payroll.html" class="btn btn-secondary" style="position:relative;z-index:1;background:white;color:var(--primary-900);">
+          View Payslip →
+        </a>
+      </div>
+
+      <!-- Lower Grid: Leave Summary + Timeline Activity Feed -->
+      <div class="grid-cols-2">
+        <!-- Leave Summary Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Leave Summary</h3>
+            <a href="my-leave.html" class="btn btn-ghost btn-sm">View all →</a>
+          </div>
+          <div id="leave-summary-content">
+            <div class="skeleton" style="height:120px;border-radius:var(--radius-input);"></div>
+          </div>
+        </div>
+
+        <!-- Recent Activity Feed (Timeline Style) -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Recent Activity</h3>
+          </div>
+          <div class="timeline-feed" id="timeline-feed">
+            <div class="skeleton" style="height:48px;margin-bottom:12px;border-radius:var(--radius-input);"></div>
+            <div class="skeleton" style="height:48px;margin-bottom:12px;border-radius:var(--radius-input);"></div>
+            <div class="skeleton" style="height:48px;border-radius:var(--radius-input);"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Apply Leave Modal -->
+  <div id="apply-modal-mount"></div>
+  <div class="toast-container"></div>
+
+  <script type="module">
+    import { Sidebar, TopBar, StatCard, StatusBadge, Modal, showToast, Icons, fmtCurrency, attachBlurValidation, el } from './components/ui/index.js';
+    import { DayflowAuth, DayflowDB } from './components/ui/index.js';
+
+    // Auth Guard
+    const user = DayflowAuth.requireAuth();
+    if (!user) throw new Error('Not authenticated');
+    if (user.role === 'admin') window.location.href = 'admin-dashboard.html';
+
+    // Sidebar
+    Sidebar({ role: 'employee', activeKey: 'dashboard', user: { name: user.name, department: user.department } });
+    document.querySelector('.main-content').style.marginLeft = 'var(--sidebar-width)';
+
+    // TopBar
+    const now = new Date();
+    const hour = now.getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const formattedDate = now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    const topbar = TopBar({
+      title: `${greeting}, ${user.name.split(' ')[0]}`,
+      subtitle: `${formattedDate} · ${user.department}`,
+      user: { name: user.name, role: user.role, department: user.department }
+    });
+    document.getElementById('topbar-mount').appendChild(topbar);
+
+    let isCheckedIn = false;
+    let todayAttRecord = null;
+
+    // Apply Leave Modal setup
+    const leaveForm = document.createElement('div');
+    const leaveModal = Modal({
+      title: 'Apply for Leave',
+      size: 'sm',
+      children: leaveForm,
+      footerButtons: [
+        (() => { const b=el('button',{class:'btn btn-secondary',onclick:()=>leaveModal.close()});b.textContent='Cancel';return b; })(),
+        (() => { const b=el('button',{class:'btn btn-primary',id:'submit-leave-btn',onclick:()=>submitLeave()});b.innerHTML=Icons.check+'<span>Submit Request</span>';return b; })(),
+      ]
+    });
+
+    leaveForm.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="l-type">Leave Type *</label>
+          <select class="form-select" id="l-type">
+            <option>Casual Leave</option>
+            <option>Sick Leave</option>
+            <option>Earned Leave</option>
+            <option>Work From Home</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);">
+          <div class="form-group">
+            <label class="form-label" for="l-from">From *</label>
+            <input class="form-input" id="l-from" type="date" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="l-to">To *</label>
+            <input class="form-input" id="l-to" type="date" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="l-reason">Reason *</label>
+          <textarea class="form-input form-textarea" id="l-reason" rows="3" placeholder="State the reason for leave..."></textarea>
+        </div>
+      </div>`;
+
+    window.openApplyLeaveModal = () => {
+      leaveModal.open();
+      attachBlurValidation(document.getElementById('l-reason'), 'Reason is required');
+    };
+
+    async function submitLeave() {
+      const type = document.getElementById('l-type').value;
+      const from = document.getElementById('l-from').value;
+      const to   = document.getElementById('l-to').value;
+      const reason = document.getElementById('l-reason').value.trim();
+
+      if (!reason) {
+        document.getElementById('l-reason').classList.add('error');
+        showToast('Please enter a reason for leave.', 'error');
+        return;
+      }
+
+      await DayflowDB.saveLeaveRequest({
+        employee_id: user.employee_id,
+        type, start_date: from, end_date: to, reason, status: 'pending', applied_at: new Date().toISOString()
+      });
+
+      showToast('Leave request submitted successfully!', 'success');
+      leaveModal.close();
+      await loadDashboard();
+    }
+
+    window.toggleCheckIn = async function() {
+      const todayStr = now.toISOString().split('T')[0];
+      const timeStr  = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const [yr, mo, dy] = todayStr.split('-').map(Number);
+
+      if (!isCheckedIn) {
+        // Check in
+        await DayflowDB._add('attendance', {
+          employee_id: user.employee_id,
+          date: todayStr, month: mo, year: yr, check_in: timeStr, check_out: null, status: 'present'
+        });
+        showToast(`Checked in at ${timeStr}`, 'success');
+      } else {
+        // Check out
+        if (todayAttRecord) {
+          todayAttRecord.check_out = timeStr;
+          await DayflowDB._put('attendance', todayAttRecord);
+          showToast(`Checked out at ${timeStr}`, 'info');
+        }
+      }
+      await loadDashboard();
+    };
+
+    async function loadDashboard() {
+      await DayflowDB.init();
+      const empId = user.employee_id;
+
+      const [todayAtt, payrollList, leaveList, emp] = await Promise.all([
+        DayflowDB.getTodayAttendance(empId),
+        DayflowDB.getPayrollByEmployee(empId),
+        DayflowDB.getLeaveRequests(empId),
+        DayflowDB.getEmployee(empId)
+      ]);
+
+      const monthAtt = await DayflowDB.getMonthAttendance(empId, now.getMonth() + 1, now.getFullYear());
+
+      // Update Check In button state
+      todayAttRecord = todayAtt;
+      if (todayAtt && todayAtt.check_in && !todayAtt.check_out) {
+        isCheckedIn = true;
+        document.getElementById('checkin-title').textContent = `Checked In at ${todayAtt.check_in}`;
+        document.getElementById('checkin-sub').textContent = 'Click to record check-out';
+        document.getElementById('checkin-action-label').textContent = 'Check Out';
+        document.getElementById('checkin-icon-bg').style.background = 'var(--info-bg)';
+        document.getElementById('checkin-icon-bg').style.color = 'var(--info)';
+      } else if (todayAtt && todayAtt.check_out) {
+        isCheckedIn = false;
+        document.getElementById('checkin-title').textContent = `Completed Workday`;
+        document.getElementById('checkin-sub').textContent = `Checked out at ${todayAtt.check_out}`;
+        document.getElementById('checkin-action-label').textContent = 'Done';
+        document.getElementById('checkin-btn').disabled = true;
+      }
+
+      // Payslip shortcut
+      const latestPayroll = payrollList.sort((a,b) => b.year - a.year || b.month - a.month)[0];
+      if (latestPayroll) {
+        document.getElementById('shortcut-net-val').textContent = fmtCurrency(latestPayroll.net_salary);
+      }
+
+      // Attendance metrics
+      const daysPassed  = now.getDate();
+      const presentDays = monthAtt.filter(a => a.status === 'present' || a.status === 'late').length;
+      const attPct      = daysPassed > 0 ? Math.round((presentDays / daysPassed) * 100) : 100;
+      const pendingLeaves = leaveList.filter(l => l.status === 'pending').length;
+      const leaveBal = emp?.leave_balance ?? 12;
+
+      // 4-Up StatCard Grid
+      const statContainer = document.getElementById('stat-cards');
+      statContainer.innerHTML = '';
+
+      const stats = [
+        {
+          title: "Today's Status",
+          value: todayAtt ? (todayAtt.status === 'present' ? 'Present' : todayAtt.status === 'late' ? 'Late' : todayAtt.status) : 'Not Checked In',
+          icon: 'attendance',
+          color: todayAtt?.status === 'present' ? 'success' : todayAtt?.status === 'late' ? 'warning' : 'danger',
+          subtitle: todayAtt?.check_in ? `In: ${todayAtt.check_in}` : 'Tap Check In above'
+        },
+        {
+          title: 'Month Attendance',
+          value: `${attPct}%`,
+          icon: 'percent',
+          color: attPct >= 80 ? 'success' : attPct >= 60 ? 'warning' : 'danger',
+          trend: { value: `${presentDays} of ${daysPassed} days`, direction: attPct >= 80 ? 'up' : 'down' }
+        },
+        {
+          title: 'Pending Leaves',
+          value: pendingLeaves,
+          icon: 'leave',
+          color: pendingLeaves > 0 ? 'warning' : 'success',
+          subtitle: 'Awaiting approval'
+        },
+        {
+          title: 'Leave Balance',
+          value: `${leaveBal} days`,
+          icon: 'calendar',
+          color: leaveBal > 5 ? 'success' : 'warning',
+          subtitle: 'Available balance'
+        }
+      ];
+
+      stats.forEach((s, i) => {
+        const card = StatCard(s);
+        card.style.animationDelay = `${i * 0.06}s`;
+        statContainer.appendChild(card);
+      });
+
+      // Leave Summary
+      const leaveSummary = document.getElementById('leave-summary-content');
+      leaveSummary.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:var(--space-3);">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-3);background:var(--bg-muted);border-radius:var(--radius-input);">
+            <span class="caption" style="font-weight:600;">Available Leave Balance</span>
+            <span style="font-size:var(--text-lg);font-weight:700;color:var(--primary-700);">${leaveBal} Days</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0 var(--space-2);">
+            <span class="caption">Submitted Requests</span>
+            <span style="font-weight:600;font-size:var(--text-sm);">${leaveList.length} total</span>
+          </div>
+          <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;padding:0 var(--space-2);">
+            ${StatusBadge({ status: 'approved', customLabel: `${leaveList.filter(l=>l.status==='approved').length} Approved`, size: 'sm' }).outerHTML}
+            ${StatusBadge({ status: 'pending',  customLabel: `${leaveList.filter(l=>l.status==='pending').length} Pending`, size: 'sm' }).outerHTML}
+          </div>
+        </div>`;
+
+      // Timeline Activity Feed
+      const activities = [
+        ...leaveList.sort((a,b) => new Date(b.applied_at) - new Date(a.applied_at)).slice(0,3).map(l => ({
+          title: `Leave Request (${l.type}) — ${l.status.toUpperCase()}`,
+          time: new Date(l.applied_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
+          type: l.status === 'approved' ? 'success' : l.status === 'rejected' ? 'danger' : 'warning',
+          icon: 'leave'
+        })),
+        ...monthAtt.slice(-3).map(a => ({
+          title: `Marked ${a.status} on ${new Date(a.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`,
+          time: a.check_in ? `Checked in at ${a.check_in}` : 'Absent',
+          type: a.status === 'present' ? 'success' : a.status === 'late' ? 'warning' : 'danger',
+          icon: 'attendance'
+        }))
+      ].slice(0, 5);
+
+      const feed = document.getElementById('timeline-feed');
+      feed.innerHTML = activities.length ? activities.map(a => `
+        <div class="timeline-item">
+          <div class="timeline-icon ${a.type}">${Icons[a.icon] || Icons.activity}</div>
+          <div class="timeline-title">${a.title}</div>
+          <div class="timeline-time">${a.time}</div>
+        </div>`).join('') : `<div class="empty-state"><p>No recent activity</p></div>`;
+    }
+
+    loadDashboard().catch(err => showToast('Error: ' + err.message, 'error'));
+  </script>
+</body>
+</html>

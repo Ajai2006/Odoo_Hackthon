@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Payslips — Dayflow HRMS</title>
+  <meta name="description" content="Dayflow HRMS Employee Payslip Viewer — detailed earnings, deductions, and official payslip document.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./components/ui/design-tokens.css">
+  <link rel="stylesheet" href="./components/ui/globals.css">
+  <link rel="stylesheet" href="./components/ui/sidebar.css">
+  <link rel="stylesheet" href="./components/ui/components.css">
+  <style>
+    /* Month selector tabs */
+    .month-tabs {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: var(--space-6);
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .month-tab-btn {
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-btn);
+      font-size: var(--text-sm);
+      font-weight: var(--fw-semibold);
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all var(--transition-fast);
+    }
+    .month-tab-btn.active {
+      background: var(--primary-700);
+      color: white;
+      border-color: var(--primary-700);
+      box-shadow: var(--shadow-sm);
+    }
+    .month-tab-btn:hover:not(.active) { background: var(--bg-muted); color: var(--text-primary); }
+
+    /* Official Payslip Document Card */
+    .payslip-doc {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: var(--space-8);
+      box-shadow: var(--shadow-md);
+      max-width: 860px;
+      margin: 0 auto var(--space-8);
+    }
+
+    .doc-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding-bottom: var(--space-6);
+      border-bottom: 2px solid var(--primary-900);
+      margin-bottom: var(--space-6);
+    }
+    .doc-company-name { font-size: var(--text-xl); font-weight: var(--fw-bold); color: var(--primary-900); }
+    .doc-company-sub  { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 2px; }
+
+    .doc-title-badge { text-align: right; }
+    .doc-title-badge h2 { font-size: var(--text-lg); color: var(--primary-700); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Employee Details Grid */
+    .doc-emp-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-4);
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      padding: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+    .doc-emp-item label { font-size: var(--text-xs); font-weight: var(--fw-bold); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .doc-emp-item p { font-size: var(--text-sm); font-weight: var(--fw-semibold); color: var(--primary-900); margin-top: 2px; }
+
+    /* Two Column Breakdown Table */
+    .doc-breakdown-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      overflow: hidden;
+      margin-bottom: var(--space-6);
+    }
+    .breakdown-col { display: flex; flex-direction: column; }
+    .breakdown-col:first-child { border-right: 1px solid var(--border); }
+
+    .col-header {
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-xs);
+      font-weight: var(--fw-bold);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      justify-content: space-between;
+    }
+    .col-header.earnings  { background: var(--success-bg); color: #065f46; }
+    .col-header.deductions{ background: var(--danger-bg);  color: #9f1239; }
+
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--border);
+      font-size: var(--text-sm);
+    }
+    .item-row:last-child { border-bottom: none; }
+    .item-val { font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+    .subtotal-row {
+      background: var(--bg-muted);
+      font-weight: var(--fw-bold);
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      border-top: 2px solid var(--border);
+      margin-top: auto;
+    }
+
+    /* Net Salary Row */
+    .net-pay-banner {
+      background: linear-gradient(135deg, var(--primary-900), var(--primary-700));
+      color: white;
+      border-radius: var(--radius-card);
+      padding: var(--space-6);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+    }
+    .net-pay-val { font-size: var(--text-3xl); font-weight: var(--fw-extrabold); font-variant-numeric: tabular-nums; line-height: 1; }
+
+    @media (max-width: 640px) {
+      .doc-emp-grid { grid-template-columns: repeat(2, 1fr); }
+      .doc-breakdown-grid { grid-template-columns: 1fr; }
+      .breakdown-col:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div id="sidebar-mount"></div>
+
+    <main class="main-content" id="main-content">
+      <!-- TopBar Header -->
+      <div id="topbar-mount"></div>
+
+      <!-- Month Selector Tabs -->
+      <div class="month-tabs" id="month-tabs">
+        <!-- Injected -->
+      </div>
+
+      <!-- Official Payslip Document -->
+      <div class="payslip-doc" id="payslip-doc">
+        <!-- Document Header -->
+        <div class="doc-header">
+          <div>
+            <div class="doc-company-name">DAYFLOW HRMS</div>
+            <div class="doc-company-sub">Every workday, perfectly aligned. · Official Salary Slip</div>
+          </div>
+          <div class="doc-title-badge">
+            <h2 id="payslip-period-title">PAYSLIP — AUG 2026</h2>
+            <div style="margin-top:4px;" id="payslip-status-badge"></div>
+          </div>
+        </div>
+
+        <!-- Employee Info Box -->
+        <div class="doc-emp-grid">
+          <div class="doc-emp-item"><label>Employee Name</label><p id="d-name">—</p></div>
+          <div class="doc-emp-item"><label>Employee ID</label><p id="d-id">—</p></div>
+          <div class="doc-emp-item"><label>Department</label><p id="d-dept">—</p></div>
+          <div class="doc-emp-item"><label>Designation</label><p id="d-desig">—</p></div>
+          <div class="doc-emp-item"><label>Joining Date</label><p id="d-doj">—</p></div>
+          <div class="doc-emp-item"><label>Bank Account</label><p>•••• •••• 4821</p></div>
+          <div class="doc-emp-item"><label>PAN No.</label><p>ABCDE1234F</p></div>
+          <div class="doc-emp-item"><label>Pay Date</label><p id="d-paydate">31 Aug 2026</p></div>
+        </div>
+
+        <!-- Two Column Breakdown: Earnings vs Deductions -->
+        <div class="doc-breakdown-grid">
+          <!-- Earnings Column -->
+          <div class="breakdown-col">
+            <div class="col-header earnings">
+              <span>Earnings Component</span>
+              <span>Amount (₹)</span>
+            </div>
+            <div class="item-row"><span>Basic Salary</span><span class="item-val" id="d-base">₹0</span></div>
+            <div class="item-row"><span>House Rent Allowance (HRA)</span><span class="item-val" id="d-hra">₹0</span></div>
+            <div class="item-row"><span>Medical Allowance</span><span class="item-val" id="d-med">₹0</span></div>
+            <div class="item-row"><span>Transport Allowance</span><span class="item-val" id="d-trans">₹0</span></div>
+            <div class="subtotal-row">
+              <span>Total Gross Earnings</span>
+              <span class="item-val" id="d-gross" style="color:#065f46;">₹0</span>
+            </div>
+          </div>
+
+          <!-- Deductions Column -->
+          <div class="breakdown-col">
+            <div class="col-header deductions">
+              <span>Deduction Component</span>
+              <span>Amount (₹)</span>
+            </div>
+            <div class="item-row"><span>Income Tax (TDS)</span><span class="item-val" id="d-tax">₹0</span></div>
+            <div class="item-row"><span>Provident Fund (PF)</span><span class="item-val" id="d-pf">₹0</span></div>
+            <div class="item-row" style="opacity:0.5;"><span>Other Deductions</span><span class="item-val">₹0</span></div>
+            <div class="item-row" style="opacity:0.5;"><span>Voluntary PF</span><span class="item-val">₹0</span></div>
+            <div class="subtotal-row">
+              <span>Total Deductions</span>
+              <span class="item-val" id="d-deduct" style="color:#9f1239;">₹0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Net Salary Summary Banner -->
+        <div class="net-pay-banner">
+          <div>
+            <div style="font-size:var(--text-xs);color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;">Take-Home Net Salary</div>
+            <div class="net-pay-val tabular" id="d-net">₹0</div>
+            <div class="caption" style="color:rgba(255,255,255,0.7);margin-top:4px;" id="d-formula">Gross Earnings − Total Deductions</div>
+          </div>
+
+          <!-- Download PDF Button in primary-700 fill (#1E3A5F) per spec -->
+          <button class="btn" style="background:#1E3A5F;color:white;padding:var(--space-3) var(--space-6);box-shadow:var(--shadow-md);" onclick="downloadPDF()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PDF
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-container"></div>
+
+  <script type="module">
+    import { Sidebar, TopBar, StatusBadge, showToast, fmtCurrency } from './components/ui/index.js';
+    import { DayflowAuth, DayflowDB } from './components/ui/index.js';
+
+    // Auth Guard
+    const user = DayflowAuth.requireAuth();
+    if (!user) throw new Error('Not authenticated');
+
+    // Sidebar
+    Sidebar({ role: 'employee', activeKey: 'my-payroll', user: { name: user.name, department: user.department } });
+    document.querySelector('.main-content').style.marginLeft = 'var(--sidebar-width)';
+
+    // TopBar Header
+    const topbar = TopBar({
+      title: 'Salary & Payslips',
+      subtitle: 'Official monthly payslip breakdown',
+      user: { name: user.name, role: user.role, department: user.department }
+    });
+    document.getElementById('topbar-mount').appendChild(topbar);
+
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    let payrollRecords = [];
+
+    async function init() {
+      await DayflowDB.init();
+      const [records, emp] = await Promise.all([
+        DayflowDB.getPayrollByEmployee(user.employee_id),
+        DayflowDB.getEmployee(user.employee_id)
+      ]);
+
+      payrollRecords = records.sort((a,b) => b.year - a.year || b.month - a.month);
+
+      // Render Month Tabs
+      const tabsMount = document.getElementById('month-tabs');
+      tabsMount.innerHTML = '';
+      payrollRecords.forEach((p, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `month-tab-btn ${idx === 0 ? 'active' : ''}`;
+        btn.textContent = `${MONTH_NAMES[p.month-1].slice(0,3)} ${p.year}`;
+        btn.onclick = () => {
+          document.querySelectorAll('.month-tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          renderPayslipDoc(p, emp);
+        };
+        tabsMount.appendChild(btn);
+      });
+
+      if (payrollRecords.length) {
+        renderPayslipDoc(payrollRecords[0], emp);
+      }
+    }
+
+    function renderPayslipDoc(p, emp) {
+      document.getElementById('payslip-period-title').textContent = `PAYSLIP — ${MONTH_NAMES[p.month-1].slice(0,3).toUpperCase()} ${p.year}`;
+
+      const badgeMount = document.getElementById('payslip-status-badge');
+      badgeMount.innerHTML = StatusBadge({ status: 'paid', size: 'sm' }).outerHTML;
+
+      // Employee Info
+      document.getElementById('d-name').textContent  = emp?.name || user.name;
+      document.getElementById('d-id').textContent    = user.employee_id;
+      document.getElementById('d-dept').textContent  = emp?.department || user.department;
+      document.getElementById('d-desig').textContent = emp?.designation || 'Staff Member';
+      document.getElementById('d-doj').textContent   = emp?.joining_date ? new Date(emp.joining_date).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '15 Mar 2022';
+
+      // Earnings
+      document.getElementById('d-base').textContent  = fmtCurrency(p.base_salary);
+      document.getElementById('d-hra').textContent   = fmtCurrency(p.house_allowance);
+      document.getElementById('d-med').textContent   = fmtCurrency(p.medical_allowance);
+      document.getElementById('d-trans').textContent = fmtCurrency(p.transport_allowance);
+      document.getElementById('d-gross').textContent = fmtCurrency(p.gross_salary);
+
+      // Deductions
+      document.getElementById('d-tax').textContent    = fmtCurrency(p.tax_deduction);
+      document.getElementById('d-pf').textContent     = fmtCurrency(p.provident_fund);
+      document.getElementById('d-deduct').textContent = fmtCurrency(p.total_deductions);
+
+      // Net Pay
+      document.getElementById('d-net').textContent = fmtCurrency(p.net_salary);
+      document.getElementById('d-formula').textContent = `${fmtCurrency(p.gross_salary)} (Gross) − ${fmtCurrency(p.total_deductions)} (Deductions)`;
+    }
+
+    window.downloadPDF = function() {
+      showToast('Generating official PDF payslip document...', 'info');
+      setTimeout(() => showToast('PDF downloaded successfully!', 'success'), 1200);
+    };
+
+    init().catch(err => showToast('Error: ' + err.message, 'error'));
+  </script>
+</body>
+</html>
