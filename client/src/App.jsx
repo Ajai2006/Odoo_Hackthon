@@ -234,8 +234,6 @@ export function App() {
       <>
         <ToastStack toasts={toasts} />
         <LoginPortal 
-          usersList={usersList} 
-          onSelectUser={handleLoginUser} 
           onLoginSuccess={handleLoginSuccess}
         />
       </>

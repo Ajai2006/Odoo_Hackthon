@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  Clock, Shield, Users, UserCheck, ArrowRight, Sparkles,
-  Building2, Briefcase, CheckCircle2, Lock, KeyRound, RefreshCw, Eye, EyeOff, AlertCircle
+  Clock, Shield, Lock, Mail, Eye, EyeOff, RefreshCw, AlertCircle,
+  CheckCircle2, ArrowRight, ShieldCheck, HelpCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -15,39 +15,99 @@ function generateCaptchaCode() {
   return code;
 }
 
-export function LoginPortal({ usersList, onSelectUser, onLoginSuccess }) {
+export function LoginPortal({ onLoginSuccess }) {
   const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
   const [captchaCode, setCaptchaCode]   = useState(generateCaptchaCode());
   const [captchaInput, setCaptchaInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe]     = useState(true);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
-  const [selectedRoleTab, setSelectedRoleTab] = useState('login'); // 'login' | 'personas'
+  const [showCredsHelp, setShowCredsHelp] = useState(false);
+  const canvasRef                       = useRef(null);
 
   const refreshCaptcha = () => {
-    setCaptchaCode(generateCaptchaCode());
+    const newCode = generateCaptchaCode();
+    setCaptchaCode(newCode);
     setCaptchaInput('');
+    drawCaptchaCanvas(newCode);
   };
 
-  const handleAutofill = (demoUser) => {
-    setEmail(demoUser.email);
-    setPassword('Password123!');
-    setCaptchaInput(captchaCode);
-    setError('');
+  // Draw distorted canvas captcha background with noise lines
+  const drawCaptchaCanvas = (codeStr) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Dark gradient background
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, '#0f172a');
+    grad.addColorStop(1, '#1e293b');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw background security noise lines
+    for (let i = 0; i < 5; i++) {
+      ctx.strokeStyle = `rgba(56, 189, 248, ${0.15 + Math.random() * 0.2})`;
+      ctx.lineWidth = 1 + Math.random() * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+      ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+      ctx.stroke();
+    }
+
+    // Draw background security dots
+    for (let i = 0; i < 35; i++) {
+      ctx.fillStyle = `rgba(56, 189, 248, ${0.2 + Math.random() * 0.3})`;
+      ctx.beginPath();
+      ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw distorted text characters
+    ctx.font = 'bold 22px "Courier New", monospace';
+    ctx.textBaseline = 'middle';
+
+    const textWidth = canvas.width - 30;
+    const charSpacing = textWidth / codeStr.length;
+
+    for (let i = 0; i < codeStr.length; i++) {
+      const char = codeStr[i];
+      const x = 18 + i * charSpacing;
+      const y = canvas.height / 2 + (Math.random() * 4 - 2);
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate((Math.random() - 0.5) * 0.3); // Slight tilt
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.shadowColor = 'rgba(56, 189, 248, 0.6)';
+      ctx.shadowBlur = 6;
+      ctx.fillText(char, 0, 0);
+
+      ctx.restore();
+    }
   };
+
+  useEffect(() => {
+    drawCaptchaCanvas(captchaCode);
+  }, []);
 
   const handleCredentialSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (!email.trim() || !password) {
-      setError('Please enter both your work email address and password.');
+      setError('Please enter both your work email address and account password.');
       return;
     }
 
     if (captchaInput.trim().toUpperCase() !== captchaCode.toUpperCase()) {
-      setError('Incorrect Captcha code. Please enter the characters shown in the security box.');
+      setError('Invalid Security Captcha. Please enter the exact characters shown in the security box.');
       refreshCaptcha();
       return;
     }
@@ -55,15 +115,11 @@ export function LoginPortal({ usersList, onSelectUser, onLoginSuccess }) {
     setLoading(true);
     try {
       const res = await api.loginCredentials(email.trim(), password);
-      if (res.user) {
-        if (onLoginSuccess) {
-          onLoginSuccess(res.user);
-        } else if (onSelectUser) {
-          onSelectUser(res.user.id);
-        }
+      if (res.user && onLoginSuccess) {
+        onLoginSuccess(res.user);
       }
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please check your credentials.');
+      setError(err.message || 'Authentication failed. Invalid work email or password.');
       refreshCaptcha();
     } finally {
       setLoading(false);
@@ -71,274 +127,344 @@ export function LoginPortal({ usersList, onSelectUser, onLoginSuccess }) {
   };
 
   return (
-    <div className="login-portal-container">
-      {/* Background ambient accents */}
-      <div className="login-ambient-blur blur-1" />
-      <div className="login-ambient-blur blur-2" />
+    <div style={{
+      minHeight: '100vh',
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'radial-gradient(circle at 50% 20%, #1e293b 0%, #0f172a 100%)',
+      padding: '1.5rem',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Subtle background glow accents */}
+      <div style={{
+        position: 'absolute',
+        top: '15%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '600px',
+        height: '400px',
+        background: 'radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(0, 0, 0, 0) 70%)',
+        pointerEvents: 'none'
+      }} />
 
-      <div className="login-card-wrapper">
+      <div style={{
+        width: '100%',
+        maxWidth: '440px',
+        background: 'rgba(30, 41, 59, 0.75)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 189, 248, 0.1)',
+        padding: '2.25rem',
+        zIndex: 1
+      }}>
         {/* Brand Header */}
-        <div className="login-brand-header">
-          <div className="login-logo-badge">
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '52px',
+            height: '52px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+            color: '#ffffff',
+            boxShadow: '0 8px 20px rgba(2, 132, 199, 0.3)',
+            marginBottom: '1rem'
+          }}>
             <Clock size={28} />
           </div>
-          <h1>Dayflow HRMS</h1>
-          <p className="login-subtitle">Enterprise Attendance, Payroll & Workforce Management Platform</p>
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#f8fafc',
+            margin: '0 0 0.4rem 0',
+            letterSpacing: '-0.02em'
+          }}>
+            Dayflow HRMS
+          </h1>
+          <p style={{
+            fontSize: '13px',
+            color: '#94a3b8',
+            margin: 0
+          }}>
+            Enterprise Attendance & Workforce Portal
+          </p>
         </div>
 
-        {/* Navigation Mode Switcher */}
-        <div className="login-role-tabs" style={{ marginBottom: '1.25rem' }}>
-          <button
-            className={`login-role-tab ${selectedRoleTab === 'login' ? 'active' : ''}`}
-            onClick={() => setSelectedRoleTab('login')}
-          >
-            <Lock size={14} /> Secure Login
-          </button>
-          <button
-            className={`login-role-tab ${selectedRoleTab === 'personas' ? 'active' : ''}`}
-            onClick={() => setSelectedRoleTab('personas')}
-          >
-            <Users size={14} /> Quick Persona Switcher ({usersList.length})
-          </button>
-        </div>
-
-        {/* MODE 1: CREDENTIALS + CAPTCHA LOGIN */}
-        {selectedRoleTab === 'login' ? (
-          <div className="login-form-card" style={{ background: 'var(--bg-surface)', padding: '1.5rem', borderRadius: 'var(--radius-modal)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-lg)' }}>
-            
-            {/* Quick Demo Autofill Chips */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-                Quick Demo Autofill
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => handleAutofill({ email: 'sarah.jenkins@dayflow.io', name: 'Sarah Jenkins' })}
-                  className="role-pill badge-admin"
-                  style={{ cursor: 'pointer', border: 'none', padding: '4px 10px', fontSize: '11px' }}
-                >
-                  🛡️ Admin (Sarah Jenkins)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAutofill({ email: 'marcus.vance@dayflow.io', name: 'Marcus Vance' })}
-                  className="role-pill badge-manager"
-                  style={{ cursor: 'pointer', border: 'none', padding: '4px 10px', fontSize: '11px' }}
-                >
-                  👔 Manager (Marcus Vance)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAutofill({ email: 'alex.chen@dayflow.io', name: 'Alex Chen' })}
-                  className="role-pill badge-employee"
-                  style={{ cursor: 'pointer', border: 'none', padding: '4px 10px', fontSize: '11px' }}
-                >
-                  💻 Employee (Alex Chen)
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#dc2626', padding: '0.75rem', borderRadius: 'var(--radius-input)', fontSize: '12px', fontWeight: 500, marginBottom: '1.25rem' }}>
-                <AlertCircle size={16} style={{ shrink: 0 }} />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleCredentialSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              
-              {/* Work Email Field */}
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
-                  Work Email Address <span style={{ color: '#dc2626' }}>*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. sarah.jenkins@dayflow.io"
-                  style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-input)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-
-              {/* Password Field */}
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
-                  Password <span style={{ color: '#dc2626' }}>*</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter account password"
-                    style={{ width: '100%', padding: '0.65rem 2.5rem 0.65rem 0.85rem', borderRadius: 'var(--radius-input)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(s => !s)}
-                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Visual Captcha Security Section */}
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
-                  Security Verification (Captcha) <span style={{ color: '#dc2626' }}>*</span>
-                </label>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                  {/* Styled Captcha Display Badge */}
-                  <div style={{
-                    padding: '0.5rem 1.25rem',
-                    background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-                    color: '#38bdf8',
-                    fontFamily: 'monospace',
-                    fontSize: '20px',
-                    fontWeight: 'bold',
-                    letterSpacing: '6px',
-                    borderRadius: 'var(--radius-input)',
-                    userSelect: 'none',
-                    fontStyle: 'italic',
-                    textDecoration: 'line-through',
-                    boxShadow: 'inset 0 0 8px rgba(56, 189, 248, 0.3)',
-                    border: '1px solid rgba(56, 189, 248, 0.4)'
-                  }}>
-                    {captchaCode}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={refreshCaptcha}
-                    title="Refresh Captcha Code"
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-btn)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    <RefreshCw size={14} /> Refresh
-                  </button>
-                </div>
-
-                <input
-                  type="text"
-                  required
-                  maxLength={4}
-                  value={captchaInput}
-                  onChange={(e) => setCaptchaInput(e.target.value)}
-                  placeholder="Enter 4-character code shown above"
-                  style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-input)', border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  marginTop: '0.5rem',
-                  padding: '0.75rem',
-                  borderRadius: 'var(--radius-btn)',
-                  background: 'var(--primary-700)',
-                  color: '#ffffff',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  border: 'none',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s ease',
-                  opacity: loading ? 0.7 : 1
-                }}
-              >
-                <Lock size={16} />
-                {loading ? 'Authenticating Credentials…' : 'Sign In to Portal'}
-              </button>
-            </form>
+        {/* Error Alert Box */}
+        {error && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#fca5a5',
+            padding: '0.75rem 1rem',
+            borderRadius: '10px',
+            fontSize: '12px',
+            fontWeight: 500,
+            marginBottom: '1.5rem',
+            lineHeight: '1.4'
+          }}>
+            <AlertCircle size={18} style={{ shrink: 0, color: '#ef4444' }} />
+            <span>{error}</span>
           </div>
-        ) : (
-          /* MODE 2: QUICK PERSONA SELECTOR GRID */
-          <>
-            <div className="login-rbac-banner">
-              <div className="rbac-tier">
-                <span className="badge-admin">Admin</span>
-                <span>Full company monitor, all departments, workforce analytics & records</span>
-              </div>
-              <div className="rbac-tier">
-                <span className="badge-manager">Manager</span>
-                <span>Department-level team monitor (Design), team analytics, self punch</span>
-              </div>
-              <div className="rbac-tier">
-                <span className="badge-employee">Employee</span>
-                <span>Personal punch in/out, shift tracker, weekly targets & personal history</span>
-              </div>
-            </div>
-
-            <div className="login-users-grid">
-              {usersList.map(user => {
-                const roleBadgeClass = user.role === 'admin' 
-                  ? 'badge-admin' 
-                  : user.role === 'manager' 
-                    ? 'badge-manager' 
-                    : 'badge-employee';
-
-                return (
-                  <div
-                    key={user.id}
-                    className={`login-user-card ${user.role}`}
-                    onClick={() => {
-                      setEmail(user.email);
-                      setPassword('Password123!');
-                      setSelectedRoleTab('login');
-                      setCaptchaInput(captchaCode);
-                    }}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="user-card-top">
-                      <div className="user-card-avatar-wrap">
-                        {user.avatar ? (
-                          <img src={user.avatar} alt={user.name} className="user-card-avatar" />
-                        ) : (
-                          <div className="user-card-avatar fallback">{user.name?.[0]}</div>
-                        )}
-                        <span className={`status-indicator ${user.role}`} />
-                      </div>
-                      <div className="user-card-info">
-                        <div className="user-card-name">{user.name}</div>
-                        <div className="user-card-designation">{user.designation || 'Staff Member'}</div>
-                        <div className="user-card-dept">
-                          <Building2 size={12} /> {user.department || 'Dayflow Staff'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="user-card-bottom">
-                      <span className={`role-pill ${roleBadgeClass}`}>
-                        {user.role.toUpperCase()}
-                      </span>
-                      <button className="login-action-btn">
-                        <span>Select Account</span>
-                        <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
         )}
 
-        {/* Security Notice */}
-        <div className="login-footer-notice" style={{ marginTop: '1.25rem' }}>
-          <Lock size={13} />
-          <span>Role-Based Access Control (RBAC) & Captcha security enforced via Express & SQLite backend.</span>
+        {/* Login Form */}
+        <form onSubmit={handleCredentialSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          
+          {/* Work Email Field */}
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.4rem' }}>
+              Work Email Address <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <Mail size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@company.com"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 0.85rem 0.75rem 2.6rem',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  color: '#f8fafc',
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s ease'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Password Field */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: '#cbd5e1' }}>
+                Password <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <Lock size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••••"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 2.6rem 0.75rem 2.6rem',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  color: '#f8fafc',
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(s => !s)}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Visual Captcha Security Challenge */}
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.4rem' }}>
+              Security Verification (Captcha) <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.6rem' }}>
+              <canvas
+                ref={canvasRef}
+                width={130}
+                height={40}
+                style={{
+                  borderRadius: '8px',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.5)'
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={refreshCaptcha}
+                title="Refresh Captcha Code"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(15, 23, 42, 0.5)',
+                  color: '#94a3b8',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <RefreshCw size={14} /> Refresh
+              </button>
+            </div>
+
+            <div style={{ position: 'relative' }}>
+              <ShieldCheck size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input
+                type="text"
+                required
+                maxLength={4}
+                value={captchaInput}
+                onChange={(e) => setCaptchaInput(e.target.value)}
+                placeholder="Enter 4-character code"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 0.85rem 0.75rem 2.6rem',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  color: '#f8fafc',
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Remember Me */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#94a3b8', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                style={{ borderRadius: '4px', accentColor: '#0284c7' }}
+              />
+              Remember session
+            </label>
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              marginTop: '0.5rem',
+              padding: '0.85rem',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '14px',
+              border: 'none',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
+              transition: 'all 0.2s ease',
+              opacity: loading ? 0.7 : 1
+            }}
+          >
+            <Lock size={16} />
+            {loading ? 'Authenticating…' : 'Sign In to Account'}
+          </button>
+        </form>
+
+        {/* Security Footer Badges */}
+        <div style={{
+          marginTop: '2rem',
+          paddingTop: '1.25rem',
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1rem',
+            fontSize: '11px',
+            color: '#64748b'
+          }}>
+            <span>🔒 256-bit SSL</span>
+            <span>·</span>
+            <span>🛡️ SQLite RBAC</span>
+            <span>·</span>
+            <span>🔑 JWT Auth</span>
+          </div>
+
+          {/* Clean Expandable Reference Drawer for Evaluators / Administrators */}
+          <div style={{ textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setShowCredsHelp(s => !s)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#38bdf8',
+                fontSize: '11px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}
+            >
+              <HelpCircle size={12} /> Account Login Directory {showCredsHelp ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+
+            {showCredsHelp && (
+              <div style={{
+                marginTop: '0.75rem',
+                padding: '0.75rem',
+                borderRadius: '8px',
+                background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(56, 189, 248, 0.2)',
+                textAlign: 'left',
+                fontSize: '11px',
+                color: '#cbd5e1'
+              }}>
+                <div style={{ fontWeight: 600, color: '#38bdf8', marginBottom: '0.4rem' }}>Standard Password: Password123!</div>
+                <div>🛡️ <strong>Admin:</strong> sarah.jenkins@dayflow.io</div>
+                <div>👔 <strong>Manager:</strong> marcus.vance@dayflow.io</div>
+                <div>💻 <strong>Employee:</strong> alex.chen@dayflow.io</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
