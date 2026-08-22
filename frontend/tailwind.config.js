@@ -12,6 +12,7 @@ export default {
           900: '#0F172A',
           700: '#1E3A5F',
           500: '#3B82F6',
+          100: '#DBEAFE',
         },
         // Semantic
         success:  '#10B981',
