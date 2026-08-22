@@ -66,7 +66,7 @@ export function LeaveManager({ currentUser, showToast }) {
       showToast('Leave Applied', 'Your leave request has been submitted to HR.', 'success');
       setFormOpen(false);
       setReason('');
-      loadData();
+      await loadData();
     } catch (err) {
       showToast('Application Failed', err.message, 'error');
     } finally {
@@ -76,9 +76,9 @@ export function LeaveManager({ currentUser, showToast }) {
 
   const handleApprove = async (id) => {
     try {
-      await api.approveLeave(id, 'Approved by manager');
+      await api.approveLeave(id, 'Approved by reviewer');
       showToast('Request Approved', 'Leave approved and attendance calendar auto-synced.', 'success');
-      loadData();
+      await loadData();
     } catch (err) {
       showToast('Approval Error', err.message, 'error');
     }
@@ -94,7 +94,7 @@ export function LeaveManager({ currentUser, showToast }) {
       showToast('Request Rejected', 'Rejection recorded with reviewer comments.', 'info');
       setRejectingId(null);
       setReviewerNote('');
-      loadData();
+      await loadData();
     } catch (err) {
       showToast('Rejection Error', err.message, 'error');
     }
@@ -151,19 +151,19 @@ export function LeaveManager({ currentUser, showToast }) {
           <div className="stat-strip mb-8" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
             <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
               <div className="stat-label">Paid Annual Leave</div>
-              <div className="stat-value">{balance?.paid_leave_balance ?? 20} <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>days left</span></div>
+              <div className="stat-value">{balance?.paid_balance ?? balance?.paid_leave_balance ?? 20} <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>days left</span></div>
               <div className="stat-subtitle">Allocated 20 days / year</div>
             </div>
 
             <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
               <div className="stat-label">Sick Leave</div>
-              <div className="stat-value">{balance?.sick_leave_balance ?? 10} <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>days left</span></div>
+              <div className="stat-value">{balance?.sick_balance ?? balance?.sick_leave_balance ?? 10} <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>days left</span></div>
               <div className="stat-subtitle">Medical & emergency leave</div>
             </div>
 
             <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
               <div className="stat-label">Unpaid Leave</div>
-              <div className="stat-value">{balance?.unpaid_leave_balance ?? 30} <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>days left</span></div>
+              <div className="stat-value">{balance?.unpaid_balance ?? balance?.unpaid_leave_balance ?? 30} <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>days left</span></div>
               <div className="stat-subtitle">Extended personal leave</div>
             </div>
           </div>
@@ -200,7 +200,7 @@ export function LeaveManager({ currentUser, showToast }) {
                         <tr key={req.id}>
                           <td style={{ textTransform: 'capitalize', fontWeight: 600 }}>{req.leave_type} Leave</td>
                           <td>{req.start_date} → {req.end_date}</td>
-                          <td>{req.days_count || 1} day(s)</td>
+                          <td>{req.total_days || req.days_count || 1} day(s)</td>
                           <td>{req.reason}</td>
                           <td>
                             <span className={`status-badge ${req.status}`}>
@@ -211,7 +211,7 @@ export function LeaveManager({ currentUser, showToast }) {
                             </span>
                           </td>
                           <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                            {req.reviewer_notes || '—'}
+                            {req.reviewer_comments || req.reviewer_notes || '—'}
                           </td>
                         </tr>
                       ))}
@@ -262,7 +262,7 @@ export function LeaveManager({ currentUser, showToast }) {
                         </td>
                         <td>{req.department}</td>
                         <td style={{ textTransform: 'capitalize', fontWeight: 600 }}>{req.leave_type}</td>
-                        <td>{req.start_date} to {req.end_date} ({req.days_count}d)</td>
+                        <td>{req.start_date} to {req.end_date} ({req.total_days || req.days_count || 1}d)</td>
                         <td>{req.reason}</td>
                         <td>
                           <span className={`status-badge ${req.status}`}>
@@ -289,7 +289,7 @@ export function LeaveManager({ currentUser, showToast }) {
                             </div>
                           ) : (
                             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                              Processed ({req.reviewer_notes || 'No notes'})
+                              Processed ({req.reviewer_comments || req.reviewer_notes || 'No notes'})
                             </span>
                           )}
                         </td>
@@ -319,9 +319,9 @@ export function LeaveManager({ currentUser, showToast }) {
                   value={leaveType}
                   onChange={e => setLeaveType(e.target.value)}
                 >
-                  <option value="paid">Paid Annual Leave ({balance?.paid_leave_balance ?? 20} days left)</option>
-                  <option value="sick">Sick Leave ({balance?.sick_leave_balance ?? 10} days left)</option>
-                  <option value="unpaid">Unpaid Personal Leave ({balance?.unpaid_leave_balance ?? 30} days left)</option>
+                  <option value="paid">Paid Annual Leave ({balance?.paid_balance ?? balance?.paid_leave_balance ?? 20} days left)</option>
+                  <option value="sick">Sick Leave ({balance?.sick_balance ?? balance?.sick_leave_balance ?? 10} days left)</option>
+                  <option value="unpaid">Unpaid Personal Leave ({balance?.unpaid_balance ?? balance?.unpaid_leave_balance ?? 30} days left)</option>
                 </select>
               </div>
 

@@ -1,4 +1,4 @@
-// API Client for Dayflow Attendance Service
+// API Client for Dayflow Attendance & HRMS Service
 let inMemoryToken = null;
 
 export function setAuthToken(token) {
@@ -11,15 +11,19 @@ export function setAuthToken(token) {
 }
 
 export function getAuthToken() {
+  if (!inMemoryToken) {
+    inMemoryToken = localStorage.getItem('auth_token');
+  }
   return inMemoryToken;
 }
 
 async function request(endpoint, options = {}) {
   const url = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  
+  const activeToken = getAuthToken();
+
   const headers = {
     'Content-Type': 'application/json',
-    ...(inMemoryToken ? { 'Authorization': `Bearer ${inMemoryToken}` } : {}),
+    ...(activeToken ? { 'Authorization': `Bearer ${activeToken}` } : {}),
     ...(options.headers || {})
   };
 
@@ -29,13 +33,21 @@ async function request(endpoint, options = {}) {
       headers,
       credentials: 'same-origin'
     });
-    const data = await res.json();
-    
+
+    let data = {};
+    const contentType = res.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      data = { message: text };
+    }
+
     if (!res.ok) {
       if (res.status === 401) {
         setAuthToken(null);
       }
-      throw new Error(data.error || `HTTP error ${res.status}`);
+      throw new Error(data.error || data.message || `HTTP error ${res.status}`);
     }
 
     if (data.token) {
@@ -50,7 +62,9 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
-  // Users & Auth
+  // Authentication & Users
+  getAuthToken,
+  setAuthToken,
   getDemoPersonas: () => request('/api/users/demo-personas'),
   getCurrentUser: () => request('/api/users/me'),
   login: (userId) => request('/api/users/login', {
@@ -63,14 +77,14 @@ export const api = {
   }),
   logout: () => {
     setAuthToken(null);
-    return request('/api/users/logout', { method: 'POST' });
+    return request('/api/users/logout', { method: 'POST' }).catch(() => ({ success: true }));
   },
   addEmployee: (payload) => request('/api/users/add-employee', {
     method: 'POST',
     body: JSON.stringify(payload)
   }),
 
-  // Attendance Endpoints
+  // Attendance Operations
   getTodayStatus: () => request('/api/attendance/today'),
   checkIn: (payload = {}) => request('/api/attendance/checkin', {
     method: 'POST',
@@ -94,7 +108,7 @@ export const api = {
     return request(`/api/attendance/analytics${query ? `?${query}` : ''}`);
   },
 
-  // Leave Management Endpoints
+  // Leave Management Operations
   getLeaveBalance: () => request('/api/leaves/balance'),
   getMyLeaves: () => request('/api/leaves/my'),
   applyLeave: (payload) => request('/api/leaves', {
@@ -102,16 +116,16 @@ export const api = {
     body: JSON.stringify(payload)
   }),
   getAllLeaves: () => request('/api/leaves'),
-  approveLeave: (id, reviewer_notes = 'Approved by reviewer') => request(`/api/leaves/${id}/approve`, {
+  approveLeave: (id, reviewer_comments = 'Approved by reviewer') => request(`/api/leaves/${id}/approve`, {
     method: 'PATCH',
-    body: JSON.stringify({ reviewer_notes })
+    body: JSON.stringify({ reviewer_comments })
   }),
-  rejectLeave: (id, reviewer_notes = 'Rejected by reviewer') => request(`/api/leaves/${id}/reject`, {
+  rejectLeave: (id, reviewer_comments = 'Rejected by reviewer') => request(`/api/leaves/${id}/reject`, {
     method: 'PATCH',
-    body: JSON.stringify({ reviewer_notes })
+    body: JSON.stringify({ reviewer_comments })
   }),
 
-  // Risk Engine Endpoint
+  // Workforce Risk Engine
   getWorkforceRisk: (department = '') => request(`/api/attendance/analytics/workforce-risk${department ? `?department=${department}` : ''}`)
 };
 

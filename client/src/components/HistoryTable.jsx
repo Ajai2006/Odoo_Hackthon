@@ -11,13 +11,18 @@ const COLUMNS = [
 ];
 
 /* Empty state */
-function EmptyState() {
+function EmptyState({ onClockInClick }) {
   return (
     <div className="empty-state">
       <div className="empty-state-icon"><History size={24} /></div>
       <h3>No attendance records</h3>
       <p>Your attendance history will appear here once you start clocking in each day.</p>
-      <button className="btn btn-primary btn-sm">Clock in today</button>
+      <button 
+        className="btn btn-primary btn-sm" 
+        onClick={onClockInClick || (() => window.scrollTo({ top: 0, behavior: 'smooth' }))}
+      >
+        Clock in today
+      </button>
     </div>
   );
 }
@@ -41,7 +46,7 @@ function SortIcon({ field, sortKey, sortDir }) {
     : <ChevronDown size={12} className="sort-icon active" aria-hidden="true" />;
 }
 
-export function HistoryTable({ records = [], loading }) {
+export function HistoryTable({ records = [], loading, onClockInClick }) {
   const [sortKey, setSortKey]   = useState('date');
   const [sortDir, setSortDir]   = useState('desc');
   const [search, setSearch]     = useState('');
@@ -125,7 +130,7 @@ export function HistoryTable({ records = [], loading }) {
       </div>
 
       {rows.length === 0 ? (
-        <EmptyState />
+        <EmptyState onClockInClick={onClockInClick} />
       ) : (
         <div className="table-wrapper">
           <table className="data-table" aria-label="Attendance history">

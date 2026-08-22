@@ -108,19 +108,16 @@ export function App() {
     }
   };
 
-  /* Initial mount */
+  /* Initial mount: restore session from token or cookie */
   useEffect(() => {
     (async () => {
-      const isAuthSession = sessionStorage.getItem('is_authenticated_session');
-      if (isAuthSession === 'true') {
-        const u = await loadUser();
-        if (u) {
-          await loadAttendance();
-        } else {
-          setCurrentUser(null);
-        }
+      const u = await loadUser();
+      if (u) {
+        sessionStorage.setItem('is_authenticated_session', 'true');
+        await loadAttendance();
       } else {
-        try { await api.logout(); } catch (e) {}
+        sessionStorage.removeItem('is_authenticated_session');
+        api.setAuthToken(null);
         setCurrentUser(null);
       }
       setAppLoading(false);
