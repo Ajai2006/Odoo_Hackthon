@@ -1,181 +1,174 @@
 import React, { useState } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { StatusBadge } from './StatusBadge';
 
-export function CalendarView({ records = [] }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW         = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+/* Status → cal cell CSS class map */
+const STATUS_CLASS = {
+  present:    'status-present',
+  half_day:   'status-half_day',
+  halfday:    'status-half_day',
+  absent:     'status-absent',
+  leave:      'status-leave',
+  incomplete: 'status-incomplete',
+};
 
-  const firstDayIndex = new Date(year, month, 1).getDay();
+export function CalendarView({ records = [], loading }) {
+  const [current, setCurrent] = useState(new Date());
+  const [hovered, setHovered]  = useState(null);   // {x, y, record, day}
+
+  const year  = current.getFullYear();
+  const month = current.getMonth();
+  const today = new Date().toISOString().slice(0, 10);
+
+  /* Build record map */
+  const recMap = new Map();
+  records.forEach(r => recMap.set(r.date, r));
+
+  /* Build grid */
+  const firstDow    = new Date(year, month, 1).getDay(); // 0=Sun
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const offset      = firstDow === 0 ? 6 : firstDow - 1; // Mon-start offset
 
-  // Create date-indexed map of attendance records
-  const recordMap = new Map();
-  records.forEach(r => {
-    recordMap.set(r.date, r);
-  });
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
-  };
-
-  const daysGrid = [];
-  // Offset for first day of month (Monday start)
-  const offset = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
-
-  for (let i = 0; i < offset; i++) {
-    daysGrid.push({ empty: true, key: `empty-${i}` });
-  }
-
+  const cells = [];
+  for (let i = 0; i < offset; i++) cells.push({ empty: true, key:`e${i}` });
   for (let d = 1; d <= daysInMonth; d++) {
-    const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const dayOfWeek = new Date(year, month, d).getDay();
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    const record = recordMap.get(dStr);
-
-    daysGrid.push({
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow     = new Date(year, month, d).getDay();
+    cells.push({
       day: d,
-      date: dStr,
-      isWeekend,
-      record,
-      key: dStr
+      date: dateStr,
+      isWeekend: dow === 0 || dow === 6,
+      isToday:   dateStr === today,
+      record:    recMap.get(dateStr) || null,
     });
   }
 
-  return (
-    <div className="glass-panel">
-      <div className="panel-header">
-        <div className="panel-title-wrap">
-          <CalendarIcon size={20} color="#38bdf8" />
-          <h2 className="panel-title">Monthly Attendance Calendar View</h2>
+  if (loading) {
+    return (
+      <div className="panel mb-8">
+        <div className="panel-header">
+          <div className="panel-title"><CalendarDays size={18} />Monthly Calendar</div>
         </div>
+        <div className="panel-body">
+          <div className="calendar-grid">
+            {[...Array(35)].map((_,i) => (
+              <div key={i} className="skeleton" style={{ height:56, borderRadius:'var(--r-input)' }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <button 
-            onClick={handlePrevMonth}
-            className="input-field" 
-            style={{ padding: '0.4rem 0.6rem', cursor: 'pointer' }}
+  return (
+    <div className="panel mb-8" style={{ position:'relative' }}>
+      <div className="panel-header">
+        <div className="panel-title">
+          <CalendarDays size={18} aria-hidden="true" />
+          Monthly Calendar
+        </div>
+        <div className="panel-actions">
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setCurrent(new Date(year, month - 1, 1))}
+            aria-label="Previous month"
           >
             <ChevronLeft size={16} />
           </button>
-          <span style={{ fontWeight: 700, fontSize: '1rem', minWidth: '130px', textAlign: 'center' }}>
-            {monthNames[month]} {year}
+          <span style={{ fontWeight:600, fontSize:15, minWidth:140, textAlign:'center', color:'var(--primary-900)' }}>
+            {MONTH_NAMES[month]} {year}
           </span>
-          <button 
-            onClick={handleNextMonth}
-            className="input-field" 
-            style={{ padding: '0.4rem 0.6rem', cursor: 'pointer' }}
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => setCurrent(new Date(year, month + 1, 1))}
+            aria-label="Next month"
           >
             <ChevronRight size={16} />
           </button>
         </div>
       </div>
 
-      {/* Days of week header */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(7, 1fr)', 
-        gap: '6px', 
-        textAlign: 'center',
-        marginBottom: '8px',
-        fontWeight: 600,
-        fontSize: '0.8rem',
-        color: '#9ca3af'
-      }}>
-        <div>MON</div>
-        <div>TUE</div>
-        <div>WED</div>
-        <div>THU</div>
-        <div>FRI</div>
-        <div>SAT</div>
-        <div>SUN</div>
-      </div>
+      <div className="panel-body">
+        {/* Day-of-week headers */}
+        <div className="calendar-header-row">
+          {DOW.map(d => <div key={d} className="calendar-dow">{d}</div>)}
+        </div>
 
-      {/* Calendar Grid */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(7, 1fr)', 
-        gap: '6px'
-      }}>
-        {daysGrid.map(item => {
-          if (item.empty) {
+        {/* Calendar cells */}
+        <div className="calendar-grid">
+          {cells.map((cell, idx) => {
+            if (cell.empty) return <div key={cell.key} className="cal-cell empty" aria-hidden="true" />;
+
+            const rec    = cell.record;
+            const status = rec?.status?.toLowerCase().replace('-','_') || null;
+            const tint   = status ? (STATUS_CLASS[status] || '') : '';
+
             return (
-              <div 
-                key={item.key} 
-                style={{ 
-                  height: '70px', 
-                  background: 'rgba(255,255,255,0.01)', 
-                  borderRadius: '6px' 
-                }} 
-              />
-            );
-          }
+              <div
+                key={cell.date}
+                className={`cal-cell ${tint} ${cell.isWeekend ? 'weekend' : ''} ${cell.isToday ? 'today-cell' : ''} ${rec ? 'clickable' : ''}`}
+                onMouseEnter={rec ? (e) => setHovered({ date: cell.date, record: rec, day: cell.day }) : undefined}
+                onMouseLeave={rec ? () => setHovered(null) : undefined}
+                title={rec ? `${cell.date}: ${status}` : undefined}
+                role={rec ? 'button' : undefined}
+                tabIndex={rec ? 0 : undefined}
+                aria-label={rec ? `${cell.date}: ${status}` : cell.date}
+              >
+                <div className="cal-cell-date">{cell.day}</div>
 
-          const rec = item.record;
-          let statusClass = 'not_marked';
-          if (rec) {
-            statusClass = rec.status;
-          } else if (item.isWeekend) {
-            statusClass = 'weekend';
-          }
-
-          return (
-            <div
-              key={item.key}
-              style={{
-                height: '75px',
-                background: item.isWeekend ? 'rgba(31, 41, 55, 0.2)' : 'rgba(31, 41, 55, 0.5)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '8px',
-                padding: '6px 8px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: item.isWeekend ? '#6b7280' : '#e5e7eb' }}>
-                  {item.day}
-                </span>
-                {rec?.late_minutes > 0 && (
-                  <span style={{ fontSize: '0.65rem', color: '#f87171', fontWeight: 700 }}>
-                    +{rec.late_minutes}m
-                  </span>
+                {rec && (
+                  <div style={{ marginTop: 'var(--sp-1)', transform:'scale(0.78)', transformOrigin:'top center' }}>
+                    <StatusBadge status={rec.status} size={11} />
+                  </div>
                 )}
-              </div>
 
-              <div>
-                {rec ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span className={`status-pill ${statusClass}`} style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem' }}>
-                      {rec.status.replace('_', ' ')}
-                    </span>
+                {/* Popover on hover */}
+                {hovered?.date === cell.date && (
+                  <div className="cal-popover" role="tooltip">
+                    <div className="cal-popover-row">
+                      <span>Status</span>
+                      <StatusBadge status={rec.status} size={11} />
+                    </div>
+                    {rec.check_in && (
+                      <div className="cal-popover-row">
+                        <span>In</span>
+                        <strong>{rec.check_in.split(' ')[1]?.slice(0,5) || '—'}</strong>
+                      </div>
+                    )}
+                    {rec.check_out && (
+                      <div className="cal-popover-row">
+                        <span>Out</span>
+                        <strong>{rec.check_out.split(' ')[1]?.slice(0,5) || '—'}</strong>
+                      </div>
+                    )}
                     {rec.work_hours > 0 && (
-                      <span style={{ fontSize: '0.7rem', color: '#9ca3af', fontFamily: 'var(--font-mono)' }}>
-                        {rec.work_hours} hrs
-                      </span>
+                      <div className="cal-popover-row">
+                        <span>Hours</span>
+                        <strong>{rec.work_hours} hrs</strong>
+                      </div>
                     )}
                   </div>
-                ) : item.isWeekend ? (
-                  <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>Weekend</span>
-                ) : (
-                  <span style={{ fontSize: '0.65rem', color: '#4b5563' }}>--</span>
                 )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div style={{ display:'flex', gap:'var(--sp-4)', marginTop:'var(--sp-4)', flexWrap:'wrap' }}>
+          {[
+            { status:'present',    label:'Present' },
+            { status:'half_day',   label:'Half Day' },
+            { status:'absent',     label:'Absent' },
+            { status:'leave',      label:'Leave' },
+            { status:'incomplete', label:'Incomplete' },
+          ].map(l => (
+            <StatusBadge key={l.status} status={l.status} size={12} />
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -1,229 +1,223 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  LogIn, 
-  LogOut, 
-  CheckCircle2, 
-  Clock, 
-  Calendar, 
-  AlertCircle,
-  Timer,
-  Sparkles
+import {
+  LogIn, LogOut, CheckCircle2, Clock, Timer, AlertCircle
 } from 'lucide-react';
 import { api } from '../services/api';
+import { StatusBadge } from './StatusBadge';
 
-export function PunchWidget({ todayRecord, onPunchSuccess, showToast }) {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [loading, setLoading] = useState(false);
-  const [elapsedShiftTime, setElapsedShiftTime] = useState('00:00:00');
-
-  // Live Digital Clock
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Live Shift Elapsed Timer
-  useEffect(() => {
-    if (todayRecord?.check_in && !todayRecord?.check_out) {
-      const updateElapsed = () => {
-        const inTime = new Date(todayRecord.check_in.replace(' ', 'T')).getTime();
-        const now = new Date().getTime();
-        const diffMs = Math.max(0, now - inTime);
-
-        const totalSecs = Math.floor(diffMs / 1000);
-        const hrs = String(Math.floor(totalSecs / 3600)).padStart(2, '0');
-        const mins = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0');
-        const secs = String(totalSecs % 60).padStart(2, '0');
-        setElapsedShiftTime(`${hrs}:${mins}:${secs}`);
-      };
-
-      updateElapsed();
-      const interval = setInterval(updateElapsed, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [todayRecord]);
-
-  const hasCheckedIn = !!todayRecord?.check_in;
-  const hasCheckedOut = !!todayRecord?.check_out;
-
-  // Handle Check In Punch
-  const handleCheckIn = async () => {
-    setLoading(true);
-    try {
-      const res = await api.checkIn();
-      showToast(res.message || 'Checked in successfully!', 'success');
-      if (onPunchSuccess) onPunchSuccess();
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle Check Out Punch
-  const handleCheckOut = async () => {
-    setLoading(true);
-    try {
-      const res = await api.checkOut();
-      showToast(res.message || 'Checked out successfully!', 'success');
-      if (onPunchSuccess) onPunchSuccess();
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatTimeOnly = (dateStr) => {
-    if (!dateStr) return '--:--:--';
-    const parts = dateStr.split(' ');
-    return parts[1] || dateStr;
-  };
-
+/* Skeleton loader for the punch hero */
+function PunchSkeleton() {
   return (
-    <div className="glass-panel">
-      <div className="panel-header">
-        <div className="panel-title-wrap">
-          <Clock size={20} color="#6366f1" />
-          <h2 className="panel-title">Today's Attendance Punch</h2>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Standard Shift:</span>
-          <span style={{ fontSize: '0.8rem', color: '#f3f4f6', fontWeight: 600 }}>09:30 AM – 06:00 PM (8.5h)</span>
+    <div className="punch-section">
+      <div className="skeleton-card">
+        <div className="skeleton skeleton-line tall" style={{ width: '70%', margin: '0 auto var(--sp-4)' }} />
+        <div className="skeleton skeleton-line" style={{ width: '50%', margin: '0 auto var(--sp-8)' }} />
+        <div className="skeleton skeleton-line tall" style={{ height: 58, borderRadius: 'var(--r-btn)' }} />
+      </div>
+      <div className="skeleton-card">
+        <div className="skeleton skeleton-line" style={{ width: '40%', marginBottom: 'var(--sp-6)' }} />
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'var(--sp-3)' }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} className="skeleton skeleton-line" style={{ height: 70 }} />
+          ))}
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="punch-hero">
-        {/* Left: Punch Button & Live Time */}
-        <div className="punch-live-section">
-          <div className="live-time-display">
-            {currentTime.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+export function PunchWidget({ todayRecord, onPunchSuccess, showToast, loading: parentLoading }) {
+  const [now, setNow]         = useState(new Date());
+  const [actionBusy, setActionBusy] = useState(false);
+  const [elapsed, setElapsed] = useState('--:--:--');
+
+  /* Live clock every second */
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  /* Shift elapsed timer — runs only when shift is active */
+  useEffect(() => {
+    if (!todayRecord?.check_in || todayRecord?.check_out) { setElapsed('--:--:--'); return; }
+
+    const update = () => {
+      const inMs  = new Date(todayRecord.check_in.replace(' ', 'T')).getTime();
+      const diffMs = Math.max(0, Date.now() - inMs);
+      const s   = Math.floor(diffMs / 1000);
+      const hh  = String(Math.floor(s / 3600)).padStart(2, '0');
+      const mm  = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const ss  = String(s % 60).padStart(2, '0');
+      setElapsed(`${hh}:${mm}:${ss}`);
+    };
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [todayRecord]);
+
+  if (parentLoading) return <PunchSkeleton />;
+
+  const hasIn  = !!todayRecord?.check_in;
+  const hasOut = !!todayRecord?.check_out;
+
+  const fmtTime = (ts) => {
+    if (!ts) return '--:--:--';
+    const part = ts.split(' ')[1] || ts;
+    return part.slice(0, 8);
+  };
+
+  const handleCheckIn = async () => {
+    setActionBusy(true);
+    try {
+      const res = await api.checkIn();
+      showToast('Checked in successfully', res.message, 'success');
+      onPunchSuccess?.();
+    } catch (err) {
+      showToast('Check-in failed', err.message, 'error');
+    } finally { setActionBusy(false); }
+  };
+
+  const handleCheckOut = async () => {
+    setActionBusy(true);
+    try {
+      const res = await api.checkOut();
+      showToast('Checked out successfully', res.message, 'success');
+      onPunchSuccess?.();
+    } catch (err) {
+      showToast('Check-out failed', err.message, 'error');
+    } finally { setActionBusy(false); }
+  };
+
+  const dayStr  = now.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const timeStr = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
+
+  return (
+    <div className="punch-section mb-8">
+      {/* ---- PUNCH HERO CARD ---- */}
+      <div className="punch-hero-card">
+        {/* Live time display */}
+        <div>
+          <div className="punch-time-display" aria-live="polite" aria-atomic="true">
+            {timeStr}
           </div>
-          <div className="live-date-display">
-            {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
-          </div>
-
-          <div className="punch-btn-wrap">
-            {!hasCheckedIn && (
-              <button 
-                className="punch-btn state-ready-checkin"
-                onClick={handleCheckIn}
-                disabled={loading}
-                id="btn-punch-checkin"
-              >
-                <LogIn size={32} />
-                <span>{loading ? 'Marking...' : 'CHECK IN'}</span>
-              </button>
-            )}
-
-            {hasCheckedIn && !hasCheckedOut && (
-              <button 
-                className="punch-btn state-active-shift"
-                onClick={handleCheckOut}
-                disabled={loading}
-                id="btn-punch-checkout"
-              >
-                <LogOut size={32} />
-                <span>{loading ? 'Marking...' : 'CHECK OUT'}</span>
-              </button>
-            )}
-
-            {hasCheckedIn && hasCheckedOut && (
-              <button 
-                className="punch-btn state-completed"
-                disabled={true}
-                id="btn-punch-completed"
-              >
-                <CheckCircle2 size={32} color="#10b981" />
-                <span>COMPLETED</span>
-              </button>
-            )}
-          </div>
-
-          <div className="punch-status-note">
-            {!hasCheckedIn && (
-              <>
-                <Sparkles size={14} color="#10b981" />
-                <span>Click Check In to commence your daily shift.</span>
-              </>
-            )}
-            {hasCheckedIn && !hasCheckedOut && (
-              <>
-                <Timer size={14} color="#6366f1" />
-                <span>Shift in progress • Elapsed: <strong style={{ color: '#fff', fontFamily: 'var(--font-mono)' }}>{elapsedShiftTime}</strong></span>
-              </>
-            )}
-            {hasCheckedIn && hasCheckedOut && (
-              <>
-                <CheckCircle2 size={14} color="#10b981" />
-                <span>Today's shift complete. Total: <strong>{todayRecord.work_hours} hrs</strong></span>
-              </>
-            )}
-          </div>
+          <div className="punch-date-display">{dayStr}</div>
         </div>
 
-        {/* Right: Today's Metrics Breakdown */}
-        <div className="today-summary-details">
-          <div className="summary-card-row">
-            <div className="summary-item">
-              <span className="summary-label">
-                <LogIn size={13} color="#10b981" />
-                Check-In Time
-              </span>
-              <span className="summary-val" style={{ color: hasCheckedIn ? '#34d399' : '#6b7280' }}>
-                {formatTimeOnly(todayRecord?.check_in)}
-              </span>
-            </div>
+        {/* Today status badge */}
+        <div>
+          <StatusBadge status={todayRecord?.status || 'not_marked'} />
+        </div>
 
-            <div className="summary-item">
-              <span className="summary-label">
-                <LogOut size={13} color="#6366f1" />
-                Check-Out Time
-              </span>
-              <span className="summary-val" style={{ color: hasCheckedOut ? '#818cf8' : '#6b7280' }}>
-                {formatTimeOnly(todayRecord?.check_out)}
-              </span>
+        {/* CTA Buttons */}
+        <div className="punch-btn-group" style={{ width:'100%' }}>
+          {!hasIn && (
+            <button
+              className="btn-punch-checkin"
+              onClick={handleCheckIn}
+              disabled={actionBusy}
+              id="btn-punch-checkin"
+              aria-label="Check in for today"
+            >
+              <LogIn size={22} aria-hidden="true" />
+              {actionBusy ? 'Clocking in…' : 'Check In'}
+            </button>
+          )}
+
+          {hasIn && !hasOut && (
+            <>
+              <button
+                className="btn-punch-checkout"
+                onClick={handleCheckOut}
+                disabled={actionBusy}
+                id="btn-punch-checkout"
+                aria-label="Check out for today"
+              >
+                <LogOut size={22} aria-hidden="true" />
+                {actionBusy ? 'Clocking out…' : 'Check Out'}
+              </button>
+
+              <div className="punch-elapsed" aria-live="polite">
+                <Timer size={14} aria-hidden="true" />
+                Shift elapsed: <strong>{elapsed}</strong>
+              </div>
+            </>
+          )}
+
+          {hasIn && hasOut && (
+            <div className="punch-completed-badge" role="status">
+              <CheckCircle2 size={20} aria-hidden="true" />
+              Shift completed · {todayRecord.work_hours} hrs today
             </div>
+          )}
+        </div>
+
+        {/* Shift note */}
+        <p style={{ fontSize:13, color:'var(--text-secondary)' }}>
+          Standard shift: 09:30 AM – 06:00 PM (8.5 h)
+        </p>
+      </div>
+
+      {/* ---- TODAY SUMMARY ---- */}
+      <div className="panel">
+        <div className="panel-header">
+          <div className="panel-title">
+            <Clock size={18} aria-hidden="true" />
+            Today's Shift Summary
           </div>
-
-          <div className="summary-card-row">
-            <div className="summary-item">
-              <span className="summary-label">
-                <Clock size={13} color="#f59e0b" />
-                Shift Duration
-              </span>
-              <span className="summary-val">
-                {hasCheckedIn && !hasCheckedOut 
-                  ? elapsedShiftTime 
-                  : todayRecord?.work_hours 
-                    ? `${todayRecord.work_hours} hrs` 
-                    : '0.00 hrs'}
-              </span>
+        </div>
+        <div className="panel-body">
+          <div className="today-summary-grid">
+            <div className="today-summary-item">
+              <div className="today-summary-label">
+                <LogIn size={13} aria-hidden="true" />
+                Clock-In
+              </div>
+              <div className={`today-summary-value ${!hasIn ? 'muted' : ''}`}>
+                {fmtTime(todayRecord?.check_in)}
+              </div>
             </div>
 
-            <div className="summary-item">
-              <span className="summary-label">
-                <AlertCircle size={13} color="#a855f7" />
-                Attendance Status
-              </span>
-              <div>
-                {todayRecord ? (
-                  <span className={`status-pill ${todayRecord.status}`}>
-                    ● {todayRecord.status.replace('_', ' ')}
-                  </span>
-                ) : (
-                  <span className="status-pill not_marked">● Not Clocked In</span>
-                )}
+            <div className="today-summary-item">
+              <div className="today-summary-label">
+                <LogOut size={13} aria-hidden="true" />
+                Clock-Out
+              </div>
+              <div className={`today-summary-value ${!hasOut ? 'muted' : ''}`}>
+                {fmtTime(todayRecord?.check_out)}
+              </div>
+            </div>
+
+            <div className="today-summary-item">
+              <div className="today-summary-label">
+                <Timer size={13} aria-hidden="true" />
+                Hours Worked
+              </div>
+              <div className={`today-summary-value ${!todayRecord?.work_hours ? 'muted' : ''}`}>
+                {todayRecord?.work_hours > 0
+                  ? `${todayRecord.work_hours} hrs`
+                  : hasIn ? elapsed : '0.00 hrs'}
+              </div>
+            </div>
+
+            <div className="today-summary-item">
+              <div className="today-summary-label">
+                <AlertCircle size={13} aria-hidden="true" />
+                Punctuality
+              </div>
+              <div style={{ marginTop: 4 }}>
+                {todayRecord?.late_minutes > 0
+                  ? <span className="late-badge">+{todayRecord.late_minutes}m late</span>
+                  : hasIn
+                    ? <span className="ontime-badge">✓ On time</span>
+                    : <span style={{ fontSize:14, color:'var(--text-secondary)' }}>—</span>
+                }
               </div>
             </div>
           </div>
 
           {todayRecord?.notes && (
-            <div className="summary-item" style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
-              <span className="summary-label">Shift Notes</span>
-              <span>{todayRecord.notes}</span>
+            <div style={{ marginTop:'var(--sp-4)', padding:'var(--sp-3)', background:'var(--bg-primary)', borderRadius:'var(--r-input)', fontSize:13, color:'var(--text-secondary)' }}>
+              <strong style={{ color:'var(--text-primary)' }}>Remarks:</strong> {todayRecord.notes}
             </div>
           )}
         </div>
