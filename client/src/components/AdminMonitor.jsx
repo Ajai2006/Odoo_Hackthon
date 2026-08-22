@@ -197,8 +197,8 @@ export function AdminMonitor({ currentUser, showToast }) {
             </div>
           </form>
 
-          {/* Refresh */}
-          <div className="form-group" style={{ justifyContent:'flex-end' }}>
+          {/* Refresh & Export CSV */}
+          <div className="form-group" style={{ justifyContent:'flex-end', display:'flex', gap:'0.5rem' }}>
             <label className="form-label">&nbsp;</label>
             <button
               className="btn btn-ghost"
@@ -207,6 +207,38 @@ export function AdminMonitor({ currentUser, showToast }) {
             >
               <RefreshCw size={15} />
               Refresh
+            </button>
+
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                if (!records || records.length === 0) return;
+                const headers = ['Employee Name', 'Employee Code', 'Department', 'Designation', 'Date', 'Status', 'Clock In', 'Clock Out', 'Hours Worked', 'Late Minutes'];
+                const rows = records.map(r => [
+                  `"${r.employee_name || ''}"`,
+                  `"${r.employee_code || ''}"`,
+                  `"${r.department || ''}"`,
+                  `"${r.designation || ''}"`,
+                  `"${r.date || date}"`,
+                  `"${r.status || 'not_marked'}"`,
+                  `"${r.check_in || ''}"`,
+                  `"${r.check_out || ''}"`,
+                  r.work_hours || 0,
+                  r.late_minutes || 0
+                ]);
+                const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement('a');
+                link.setAttribute('href', encodedUri);
+                link.setAttribute('download', `Dayflow_Attendance_Report_${date}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast('Export Complete', 'Attendance report downloaded as CSV.', 'success');
+              }}
+              style={{ display:'flex', alignItems:'center', gap:'0.35rem', fontSize:'12px', padding:'0.45rem 0.85rem' }}
+            >
+              Export CSV
             </button>
           </div>
         </div>

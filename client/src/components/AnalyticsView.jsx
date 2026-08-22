@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   BarChart3, TrendingUp, CheckCircle2, UserX, Clock,
-  CalendarDays, Building2, ChevronDown
+  CalendarDays, Building2, ChevronDown, Sparkles, Download, Lightbulb, Zap, ArrowUpRight
 } from 'lucide-react';
 import { api } from '../services/api';
 import { StatCard } from './StatCard';
@@ -52,13 +52,38 @@ export function AnalyticsView({ currentUser, showToast }) {
 
   useEffect(() => { load(); }, [effectiveDept]);
 
+  const handleExportAnalyticsCSV = () => {
+    if (!data) return;
+    const { departmentBreakdown = [], monthlyTrend = [] } = data;
+    const headers = ['Type', 'Category / Start Date', 'Employee Count / Records', 'Present Count / Rate', 'Late Count', 'Avg Shift Hours'];
+    const rows = [
+      ...departmentBreakdown.map(d => [`"Department"`, `"${d.department}"`, d.employeeCount, d.presentLogs, d.lateLogs, d.deptAvgHours || 0]),
+      ...monthlyTrend.map(t => [`"Weekly Trend"`, `"${t.week_start}"`, t.total_records, `${t.present_count} present`, t.late_count, t.avg_hours || 0])
+    ];
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Dayflow_Workforce_Analytics_${effectiveDept}_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Export Complete', 'Workforce analytics downloaded as CSV.', 'success');
+  };
+
   if (loading) return <AnalyticsSkeleton />;
 
   const { metrics = {}, departmentBreakdown = [], monthlyTrend = [] } = data || {};
 
+  // Compute Smart AI Insights
+  const topDept = [...departmentBreakdown].sort((a, b) => (b.presentLogs || 0) - (a.presentLogs || 0))[0];
+  const rate = metrics.attendancePercentage ?? 0;
+  const lateCount = metrics.lateArrivalCount ?? 0;
+
   return (
     <div>
-      {/* Scope banner / Dept filter */}
+      {/* Scope banner / Dept filter & Export button */}
       <div className="page-header-actions mb-6" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'var(--sp-4)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'var(--sp-2)' }}>
           {isEmployee && (
@@ -78,26 +103,82 @@ export function AnalyticsView({ currentUser, showToast }) {
           )}
         </div>
 
-        {currentUser?.role === 'admin' && (
-          <div className="form-group flex-row" style={{ flexDirection:'row', alignItems:'center', gap:'var(--sp-2)' }}>
-            <Building2 size={16} style={{ color:'var(--text-secondary)' }} aria-hidden="true" />
-            <div className="select-wrap">
-              <select
-                className="form-control"
-                value={dept}
-                onChange={e => setDept(e.target.value)}
-                aria-label="Filter analytics by department"
-              >
-                <option value="all">Company-wide</option>
-                <option value="Engineering">Engineering</option>
-                <option value="Design">Design</option>
-                <option value="HR & People">HR &amp; People</option>
-                <option value="Sales">Sales</option>
-              </select>
-              <ChevronDown size={14} className="select-caret" aria-hidden="true" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {currentUser?.role === 'admin' && (
+            <div className="form-group flex-row" style={{ flexDirection:'row', alignItems:'center', gap:'var(--sp-2)' }}>
+              <Building2 size={16} style={{ color:'var(--text-secondary)' }} aria-hidden="true" />
+              <div className="select-wrap">
+                <select
+                  className="form-control"
+                  value={dept}
+                  onChange={e => setDept(e.target.value)}
+                  aria-label="Filter analytics by department"
+                >
+                  <option value="all">Company-wide</option>
+                  <option value="Engineering">Engineering</option>
+                  <option value="Design">Design</option>
+                  <option value="HR & People">HR &amp; People</option>
+                  <option value="Sales">Sales</option>
+                </select>
+                <ChevronDown size={14} className="select-caret" aria-hidden="true" />
+              </div>
             </div>
+          )}
+
+          <button
+            className="btn btn-primary"
+            onClick={handleExportAnalyticsCSV}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '13px', padding: '0.55rem 0.95rem' }}
+          >
+            <Download size={15} /> Export Analytics CSV
+          </button>
+        </div>
+      </div>
+
+      {/* 🔮 SMART AI WORKFORCE INSIGHTS PANEL */}
+      <div className="panel mb-8" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)', border: '1px solid #bae6fd', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)' }}>
+        <div className="panel-header" style={{ borderBottom: '1px solid #e0f2fe' }}>
+          <div className="panel-title" style={{ color: '#0369a1', fontWeight: 700 }}>
+            <Sparkles size={18} style={{ color: '#0284c7' }} />
+            AI Workforce Insights & Automated Recommendations
           </div>
-        )}
+          <span style={{ fontSize: '11px', background: '#0284c7', color: '#fff', padding: '3px 8px', borderRadius: '12px', fontWeight: 600 }}>
+            AI ASSISTANT
+          </span>
+        </div>
+
+        <div className="panel-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+          <div style={{ padding: '0.85rem', background: '#ffffff', borderRadius: '10px', border: '1px solid #e0f2fe' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '0.35rem' }}>
+              <TrendingUp size={15} color="#10b981" /> Attendance Performance Analysis
+            </div>
+            <p style={{ fontSize: '12px', color: '#475569', margin: 0, lineHeight: 1.5 }}>
+              Overall workforce attendance rate stands at <strong style={{ color: '#0f172a' }}>{rate}%</strong>. {topDept ? `${topDept.department} leads shift completions.` : 'Performance aligns with targets.'}
+            </p>
+          </div>
+
+          <div style={{ padding: '0.85rem', background: '#ffffff', borderRadius: '10px', border: '1px solid #e0f2fe' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '0.35rem' }}>
+              <Zap size={15} color="#f59e0b" /> Punctuality & Anomaly Insights
+            </div>
+            <p style={{ fontSize: '12px', color: '#475569', margin: 0, lineHeight: 1.5 }}>
+              {lateCount > 0 
+                ? `Detected ${lateCount} late clock-in instance(s) after 09:30 AM standard shift start.` 
+                : 'Zero late clock-in anomalies detected. Excellent team punctuality.'}
+            </p>
+          </div>
+
+          <div style={{ padding: '0.85rem', background: '#ffffff', borderRadius: '10px', border: '1px solid #e0f2fe' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '0.35rem' }}>
+              <Lightbulb size={15} color="#0284c7" /> AI Manager Recommendation
+            </div>
+            <p style={{ fontSize: '12px', color: '#475569', margin: 0, lineHeight: 1.5 }}>
+              {lateCount > 2 
+                ? 'Recommended action: Schedule a 15-min shift alignment or enable automated morning check-in reminders.' 
+                : 'Recommended action: Maintain current shift roster; attendance distribution is optimal.'}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* 6-card stat strip — Differentiator StatCards */}
@@ -163,7 +244,7 @@ export function AnalyticsView({ currentUser, showToast }) {
           <div className="panel-header">
             <div className="panel-title">
               <Building2 size={18} aria-hidden="true" />
-              Department Performance
+              Department Performance Breakdown
             </div>
           </div>
           <div className="table-wrapper">
@@ -200,7 +281,7 @@ export function AnalyticsView({ currentUser, showToast }) {
           <div className="panel-header">
             <div className="panel-title">
               <TrendingUp size={18} aria-hidden="true" />
-              Weekly Trend (last 6 weeks)
+              Weekly Trend Analysis (last 6 weeks)
             </div>
           </div>
           <div className="table-wrapper">

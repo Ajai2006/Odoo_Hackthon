@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Clock, Shield, Lock, Mail, Eye, EyeOff, RefreshCw, AlertCircle,
-  CheckCircle2, ArrowRight, ShieldCheck, HelpCircle, ChevronDown, ChevronUp
+  ShieldCheck, HelpCircle, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -43,7 +43,7 @@ export function LoginPortal({ onLoginSuccess }) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Dark gradient background
+    // Dark gradient background for captcha readability
     const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
     grad.addColorStop(0, '#0f172a');
     grad.addColorStop(1, '#1e293b');
@@ -52,7 +52,7 @@ export function LoginPortal({ onLoginSuccess }) {
 
     // Draw background security noise lines
     for (let i = 0; i < 5; i++) {
-      ctx.strokeStyle = `rgba(56, 189, 248, ${0.15 + Math.random() * 0.2})`;
+      ctx.strokeStyle = `rgba(56, 189, 248, ${0.2 + Math.random() * 0.25})`;
       ctx.lineWidth = 1 + Math.random() * 1.5;
       ctx.beginPath();
       ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
@@ -61,8 +61,8 @@ export function LoginPortal({ onLoginSuccess }) {
     }
 
     // Draw background security dots
-    for (let i = 0; i < 35; i++) {
-      ctx.fillStyle = `rgba(56, 189, 248, ${0.2 + Math.random() * 0.3})`;
+    for (let i = 0; i < 30; i++) {
+      ctx.fillStyle = `rgba(56, 189, 248, ${0.25 + Math.random() * 0.3})`;
       ctx.beginPath();
       ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 1.2, 0, Math.PI * 2);
       ctx.fill();
@@ -133,33 +133,43 @@ export function LoginPortal({ onLoginSuccess }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(circle at 50% 20%, #1e293b 0%, #0f172a 100%)',
+      background: 'linear-gradient(135deg, #f8fafc 0%, #e0f2fe 50%, #f1f5f9 100%)',
       padding: '1.5rem',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
       position: 'relative',
       overflow: 'hidden'
     }}>
-      {/* Subtle background glow accents */}
+      {/* Background ambient accents */}
       <div style={{
         position: 'absolute',
-        top: '15%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '600px',
-        height: '400px',
-        background: 'radial-gradient(circle, rgba(56, 189, 248, 0.08) 0%, rgba(0, 0, 0, 0) 70%)',
+        top: '-10%',
+        right: '-5%',
+        width: '450px',
+        height: '450px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(2, 132, 199, 0.12) 0%, rgba(255, 255, 255, 0) 70%)',
         pointerEvents: 'none'
       }} />
 
       <div style={{
+        position: 'absolute',
+        bottom: '-10%',
+        left: '-5%',
+        width: '450px',
+        height: '450px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(255, 255, 255, 0) 70%)',
+        pointerEvents: 'none'
+      }} />
+
+      {/* Main White & Blue Login Card */}
+      <div style={{
         width: '100%',
         maxWidth: '440px',
-        background: 'rgba(30, 41, 59, 0.75)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
         borderRadius: '16px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 189, 248, 0.1)',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.02), 0 0 40px rgba(2, 132, 199, 0.08)',
         padding: '2.25rem',
         zIndex: 1
       }}>
@@ -182,7 +192,7 @@ export function LoginPortal({ onLoginSuccess }) {
           <h1 style={{
             fontSize: '24px',
             fontWeight: '700',
-            color: '#f8fafc',
+            color: '#0f172a',
             margin: '0 0 0.4rem 0',
             letterSpacing: '-0.02em'
           }}>
@@ -190,7 +200,7 @@ export function LoginPortal({ onLoginSuccess }) {
           </h1>
           <p style={{
             fontSize: '13px',
-            color: '#94a3b8',
+            color: '#64748b',
             margin: 0
           }}>
             Enterprise Attendance & Workforce Portal
@@ -203,9 +213,9 @@ export function LoginPortal({ onLoginSuccess }) {
             display: 'flex',
             alignItems: 'center',
             gap: '0.6rem',
-            background: 'rgba(239, 68, 68, 0.12)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            color: '#fca5a5',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#991b1b',
             padding: '0.75rem 1rem',
             borderRadius: '10px',
             fontSize: '12px',
@@ -213,7 +223,7 @@ export function LoginPortal({ onLoginSuccess }) {
             marginBottom: '1.5rem',
             lineHeight: '1.4'
           }}>
-            <AlertCircle size={18} style={{ shrink: 0, color: '#ef4444' }} />
+            <AlertCircle size={18} style={{ shrink: 0, color: '#dc2626' }} />
             <span>{error}</span>
           </div>
         )}
@@ -223,11 +233,11 @@ export function LoginPortal({ onLoginSuccess }) {
           
           {/* Work Email Field */}
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.4rem' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
               Work Email Address <span style={{ color: '#ef4444' }}>*</span>
             </label>
             <div style={{ position: 'relative' }}>
-              <Mail size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <Mail size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
                 type="email"
                 required
@@ -238,9 +248,9 @@ export function LoginPortal({ onLoginSuccess }) {
                   width: '100%',
                   padding: '0.75rem 0.85rem 0.75rem 2.6rem',
                   borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  color: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc',
+                  color: '#0f172a',
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box',
@@ -253,12 +263,12 @@ export function LoginPortal({ onLoginSuccess }) {
           {/* Password Field */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: '#cbd5e1' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>
                 Password <span style={{ color: '#ef4444' }}>*</span>
               </label>
             </div>
             <div style={{ position: 'relative' }}>
-              <Lock size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <Lock size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
@@ -269,9 +279,9 @@ export function LoginPortal({ onLoginSuccess }) {
                   width: '100%',
                   padding: '0.75rem 2.6rem 0.75rem 2.6rem',
                   borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  color: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc',
+                  color: '#0f172a',
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box'
@@ -287,7 +297,7 @@ export function LoginPortal({ onLoginSuccess }) {
                   transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
-                  color: '#64748b',
+                  color: '#94a3b8',
                   cursor: 'pointer',
                   padding: '4px'
                 }}
@@ -299,7 +309,7 @@ export function LoginPortal({ onLoginSuccess }) {
 
           {/* Visual Captcha Security Challenge */}
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.4rem' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
               Security Verification (Captcha) <span style={{ color: '#ef4444' }}>*</span>
             </label>
             
@@ -310,8 +320,8 @@ export function LoginPortal({ onLoginSuccess }) {
                 height={40}
                 style={{
                   borderRadius: '8px',
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.5)'
+                  border: '1px solid #cbd5e1',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                 }}
               />
 
@@ -325,9 +335,9 @@ export function LoginPortal({ onLoginSuccess }) {
                   gap: '0.35rem',
                   padding: '0.5rem 0.75rem',
                   borderRadius: '8px',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  background: 'rgba(15, 23, 42, 0.5)',
-                  color: '#94a3b8',
+                  border: '1px solid #cbd5e1',
+                  background: '#f1f5f9',
+                  color: '#475569',
                   fontSize: '12px',
                   fontWeight: 600,
                   cursor: 'pointer'
@@ -338,7 +348,7 @@ export function LoginPortal({ onLoginSuccess }) {
             </div>
 
             <div style={{ position: 'relative' }}>
-              <ShieldCheck size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <ShieldCheck size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
                 type="text"
                 required
@@ -350,9 +360,9 @@ export function LoginPortal({ onLoginSuccess }) {
                   width: '100%',
                   padding: '0.75rem 0.85rem 0.75rem 2.6rem',
                   borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  color: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc',
+                  color: '#0f172a',
                   fontSize: '13px',
                   outline: 'none',
                   boxSizing: 'border-box'
@@ -363,7 +373,7 @@ export function LoginPortal({ onLoginSuccess }) {
 
           {/* Remember Me */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#94a3b8', cursor: 'pointer' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#64748b', cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 checked={rememberMe}
@@ -393,7 +403,7 @@ export function LoginPortal({ onLoginSuccess }) {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
-              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
+              boxShadow: '0 4px 14px rgba(2, 132, 199, 0.35)',
               transition: 'all 0.2s ease',
               opacity: loading ? 0.7 : 1
             }}
@@ -407,7 +417,7 @@ export function LoginPortal({ onLoginSuccess }) {
         <div style={{
           marginTop: '2rem',
           paddingTop: '1.25rem',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          borderTop: '1px solid #f1f5f9',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.75rem'
@@ -435,7 +445,7 @@ export function LoginPortal({ onLoginSuccess }) {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#38bdf8',
+                color: '#0284c7',
                 fontSize: '11px',
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -452,13 +462,13 @@ export function LoginPortal({ onLoginSuccess }) {
                 marginTop: '0.75rem',
                 padding: '0.75rem',
                 borderRadius: '8px',
-                background: 'rgba(15, 23, 42, 0.8)',
-                border: '1px solid rgba(56, 189, 248, 0.2)',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
                 textAlign: 'left',
                 fontSize: '11px',
-                color: '#cbd5e1'
+                color: '#334155'
               }}>
-                <div style={{ fontWeight: 600, color: '#38bdf8', marginBottom: '0.4rem' }}>Standard Password: Password123!</div>
+                <div style={{ fontWeight: 600, color: '#0284c7', marginBottom: '0.4rem' }}>Standard Password: Password123!</div>
                 <div>🛡️ <strong>Admin:</strong> sarah.jenkins@dayflow.io</div>
                 <div>👔 <strong>Manager:</strong> marcus.vance@dayflow.io</div>
                 <div>💻 <strong>Employee:</strong> alex.chen@dayflow.io</div>
