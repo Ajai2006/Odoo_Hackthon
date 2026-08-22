@@ -2,88 +2,85 @@
 
 > **Every workday, perfectly aligned.**
 
-Full-stack HRMS built with Django 5 + DRF (backend) and React 18 + Vite + Tailwind CSS (frontend).
+Full-stack enterprise HRMS featuring **Attendance & Shift Management**, **Role-Based Access Control (RBAC)**, **Payroll**, **Leave Management**, and **Workforce Analytics**.
 
 ---
 
-## 🏗️ Project Structure
+## 🏗️ Architecture & Modules
 
 ```
 HRM/
-├── backend/          Django 5 + DRF + Simple JWT
-│   ├── core/         Settings, URLs, WSGI
-│   ├── accounts/     User, Employee models + permissions (Member 1)
-│   └── payroll/      Payroll model, serializers, views, admin
-└── frontend/         React 18 + Vite + Tailwind CSS
-    └── src/
-        ├── components/ui/   Shared design system (5 components)
-        ├── contexts/        AuthContext (JWT)
-        ├── services/        Axios API client
-        └── pages/
-            ├── Login.jsx
-            ├── employee/    Dashboard, PayslipViewer
-            └── admin/       Dashboard, PayrollTable
+├── client/           React 18 + Vite (Dayflow Attendance & Analytics UI)
+├── server/           Express.js + Native SQLite (Attendance, RBAC & Analytics API)
+├── backend/          Django 5 + DRF (Accounts, Payroll)
+├── frontend/         React 18 + Vite + Tailwind CSS
+├── components/       Shared design system UI components
+└── dev.js            Full-stack orchestrator
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Attendance & Analytics Module)
 
-### Backend
-
+### 1. Install & Seed
 ```bash
-cd backend
-
-# 1. Install dependencies (first time)
-pip install -r requirements.txt
-
-# 2. Run migrations
-python manage.py migrate
-
-# 3. Create a superuser (admin)
-python manage.py createsuperuser
-
-# 4. Start the dev server
-python manage.py runserver
-# → API available at http://127.0.0.1:8000/
+# Seed realistic attendance history, RBAC personas (Admin, Manager, Employee)
+npm run seed
 ```
 
-### Frontend
-
+### 2. Start Full-Stack Dev Server
 ```bash
-cd frontend
-
-# 1. Install dependencies (first time)
-npm install
-
-# 2. Start the dev server
+# Concurrently runs Express API (:5000) and React Vite (:3000)
 npm run dev
-# → App available at http://localhost:5173/
+```
+
+### 3. Run Automated Tests
+```bash
+# Executes native test suite for validation & RBAC rules
+npm test
 ```
 
 ---
 
-## 🎨 Design System (Part A)
+## ⚡ Attendance & RBAC Endpoints
 
-Components in `frontend/src/components/ui/`:
-
-| Component | Props |
-|---|---|
-| `StatCard` | `title, value, icon, trend, color, loading` |
-| `DataTable` | `columns, data, onRowClick, actions, searchable, pageSize, loading` |
-| `StatusBadge` | `status, size` |
-| `Modal` | `isOpen, onClose, title, children, size, footer` |
-| `Sidebar` | `role` (reads from AuthContext) |
-
-```js
-import { StatCard, DataTable, StatusBadge, Modal, Sidebar } from '@/components/ui'
-```
-
-See [`src/components/ui/README.md`](frontend/src/components/ui/README.md) for full prop docs.
+| Method | Endpoint | Access | Description & Validation |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/attendance/checkin` | Employee | Clock in for today. Server-side rejection for duplicate check-ins (`409 Conflict`). Computes punctuality/late delta. |
+| `POST` | `/api/attendance/checkout` | Employee | Clock out for today. Validates `check_out > check_in` (`400 Bad Request`). Calculates work hours and determines `present` / `half_day` / `incomplete`. |
+| `GET` | `/api/attendance/today` | Employee | Returns today's active punch and shift status for live widget. |
+| `GET` | `/api/attendance` | Employee | Personal historical attendance records with date/month filtering. |
+| `GET` | `/api/attendance/weekly` | Employee | Current week (Mon-Sun) hours breakdown vs 40h target. |
+| `GET` | `/api/attendance/all` | Admin & Manager | Real-time attendance monitor (Admins see all departments; Managers scoped to team). |
+| `GET` | `/api/attendance/analytics` | All Roles | Attendance %, present/absent/leave counts, late-arrival count, department breakdown, and trends. |
+| `GET` | `/api/users/demo-personas` | Dev / Demo | Returns personas with designation, department, and role badges. |
 
 ---
 
-## 💰 Payroll API (Part B)
+## 🎯 End-to-End Demo Workflow
+
+1. **Employee Experience**:
+   - Open `http://localhost:3000` (defaults to **Alex Chen** or **Priya Patel**).
+   - Click the green **CHECK IN** button in the Live Punch Hero.
+   - Observe live digital clock and active elapsed shift timer start counting up.
+   - Click **CHECK OUT** to conclude shift and view updated weekly & monthly charts.
+
+2. **Manager Experience**:
+   - Switch persona or log in as **Marcus Vance (Manager)**.
+   - View **Team Attendance Monitor** locked to the **Design** team.
+   - Review team analytics and punctuality logs.
+
+3. **Admin Experience**:
+   - Switch persona or log in as **Sarah Jenkins (Admin / HR Lead)**.
+   - Access **Company Attendance Monitor** across all departments (Engineering, Design, HR, Sales).
+   - Review organizational headcount, live clock-in roster, and executive analytics.
+
+4. **Authentication Portal**:
+   - Click top-right avatar and choose **Sign out** to access the dedicated **Login Portal**.
+
+---
+
+## 💰 Payroll API
 
 | Method | Endpoint | Permission | Description |
 |---|---|---|---|
@@ -97,51 +94,3 @@ See [`src/components/ui/README.md`](frontend/src/components/ui/README.md) for fu
 | `GET` | `/api/accounts/me/` | Any auth | Current user info |
 | `POST` | `/api/token/` | Public | Obtain JWT |
 | `POST` | `/api/token/refresh/` | Public | Refresh JWT |
-
-### Validation rules
-
-- All monetary fields must be **≥ 0** (enforced by DRF serializer, not just UI)
-- `net_salary` must be **> 0** (preview computed before save)
-- `reason` is **required on PUT** — enforced server-side
-- Employees have **zero write access** — enforced by `IsAdmin` permission class
-
----
-
-## 📊 Dashboards (Part C)
-
-### Employee (`/employee/dashboard`)
-- StatCards: today's attendance, monthly attendance %, pending leaves, leave balance
-- Recent activity feed
-- Quick links (Payslip, Leave, Attendance)
-
-### Admin (`/admin/dashboard`)
-- StatCards: total employees, present/absent/on-leave today, pending approvals
-- Searchable/sortable employee DataTable with attendance progress bars
-- HR activity feed
-
-> ⚠️ **Integration Note**: Dashboards use `MOCK_DATA` constants. When Member 2 (Attendance) and Member 3 (Leave) land their APIs, replace the mock `setTimeout` blocks with real `api.get()` calls. TODO comments mark every location.
-
----
-
-## 🌿 Branches
-
-- `main` — stable base
-- `feature/payroll` — Part B: payroll Django app + React UI
-- `feature/ui-polish` — Part A: shared design system
-
----
-
-## 👥 Team Integration Notes
-
-**For Member 1 (accounts)**
-- Replace `backend/accounts/models.py` stub with full User/Employee implementation
-- Keep `role` field and `employee_profile` related_name — payroll depends on them
-- Keep `IsAdmin` / `IsEmployee` in `accounts/permissions.py`
-
-**For Member 2 (attendance)**
-- Admin dashboard expects: `GET /api/attendance/stats/today/` → `{ present_today, absent_today, on_leave_today }`
-- Employee dashboard expects: `GET /api/attendance/my/today/` → `{ status: 'present'|'absent'|'on-leave'|'late' }` and `GET /api/attendance/my/summary/?month=&year=` → `{ percentage: 92.3 }`
-
-**For Member 3 (leave)**
-- Employee dashboard expects: `GET /api/leave/my/summary/` → `{ pending: 2, balance: 8 }`
-- Admin dashboard expects: `GET /api/leave/pending/count/` → `{ count: 7 }`
