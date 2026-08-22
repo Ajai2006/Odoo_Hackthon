@@ -93,6 +93,31 @@ Expected: **21 tests pass, 0 fail.**
 
 ---
 
+## 🐳 Docker Deploy (One Command)
+
+**Prerequisites:** Docker + Docker Compose installed.
+
+```bash
+# Clone and deploy the full stack (API + frontend) in one command
+git clone https://github.com/Ajai2006/Odoo_Hackthon.git
+cd Odoo_Hackthon
+docker compose up --build
+```
+
+| Service | Container | URL |
+|:---|:---|:---|
+| Express API | `dayflow-server` | http://localhost:5000 |
+| React Frontend (nginx) | `dayflow-client` | http://localhost:3000 |
+
+The SQLite database is persisted in a named Docker volume (`dayflow_db`) and survives container restarts.
+
+To stop and clean up:
+```bash
+docker compose down
+```
+
+---
+
 ## 🔐 Environment Configuration
 
 ### Root `.env` (copy from `.env.example`)
