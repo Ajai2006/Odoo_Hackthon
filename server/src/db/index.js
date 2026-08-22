@@ -20,12 +20,23 @@ db.exec('PRAGMA journal_mode = WAL;');
 db.exec('PRAGMA busy_timeout = 5000;');
 
 export function initDb() {
-  // Only execute schema initialization if users table doesn't exist yet
   try {
     const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
     if (!tableCheck) {
       const schema = fs.readFileSync(schemaPath, 'utf8');
       db.exec(schema);
+    } else {
+      // Auto-migration check: ensure refresh_tokens table exists for JWT rotation
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS refresh_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          token_hash TEXT UNIQUE NOT NULL,
+          expires_at DATETIME NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+      `);
     }
   } catch (e) {
     // Fallback if check fails

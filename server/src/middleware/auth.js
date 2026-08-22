@@ -30,13 +30,17 @@ export function generateRefreshToken(userId) {
   const hash = crypto.createHash('sha256').update(raw).digest('hex');
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS).toISOString();
 
-  // Purge any previous refresh tokens for this user (single session per user)
-  dbHelper.run('DELETE FROM refresh_tokens WHERE user_id = ?', [userId]);
+  try {
+    // Purge any previous refresh tokens for this user (single session per user)
+    dbHelper.run('DELETE FROM refresh_tokens WHERE user_id = ?', [userId]);
 
-  dbHelper.run(
-    'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
-    [userId, hash, expiresAt]
-  );
+    dbHelper.run(
+      'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)',
+      [userId, hash, expiresAt]
+    );
+  } catch (err) {
+    console.warn('Refresh token DB persistence error:', err.message);
+  }
 
   return raw;
 }
@@ -46,19 +50,29 @@ export function generateRefreshToken(userId) {
  * Returns the matching DB row or null.
  */
 export function validateRefreshToken(raw) {
-  const hash = crypto.createHash('sha256').update(raw).digest('hex');
-  const record = dbHelper.get(
-    "SELECT * FROM refresh_tokens WHERE token_hash = ? AND expires_at > datetime('now')",
-    [hash]
-  );
-  return record || null;
+  if (!raw) return null;
+  try {
+    const hash = crypto.createHash('sha256').update(raw).digest('hex');
+    const record = dbHelper.get(
+      "SELECT * FROM refresh_tokens WHERE token_hash = ? AND expires_at > datetime('now')",
+      [hash]
+    );
+    return record || null;
+  } catch (err) {
+    console.warn('Refresh token validation error:', err.message);
+    return null;
+  }
 }
 
 /**
  * Revoke all refresh tokens for a user (used on logout).
  */
 export function revokeRefreshTokens(userId) {
-  dbHelper.run('DELETE FROM refresh_tokens WHERE user_id = ?', [userId]);
+  try {
+    dbHelper.run('DELETE FROM refresh_tokens WHERE user_id = ?', [userId]);
+  } catch (err) {
+    console.warn('Refresh token revocation error:', err.message);
+  }
 }
 
 /**
