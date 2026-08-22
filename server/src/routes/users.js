@@ -2,7 +2,10 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import { dbHelper } from '../db/index.js';
-import { authContext, requireRole, generateToken } from '../middleware/auth.js';
+import {
+  authContext, requireRole, generateToken,
+  generateRefreshToken, validateRefreshToken, revokeRefreshTokens
+} from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -95,21 +98,24 @@ router.post('/register', (req, res) => {
   const user = dbHelper.get('SELECT id, name, email, role, avatar FROM users WHERE id = ?', [userId]);
   const employee = dbHelper.get('SELECT id, user_id, employee_code, department, designation, joining_date FROM employees WHERE id = ?', [employeeId]);
 
-  const token = generateToken(user);
+  const token        = generateToken(user);
+  const refreshToken = generateRefreshToken(user.id);
 
   res.cookie('auth_token', token, {
-    httpOnly: true,
-    sameSite: 'lax',
+    httpOnly: true, sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: 8 * 60 * 60 * 1000
+  });
+  res.cookie('refresh_token', refreshToken, {
+    httpOnly: true, sameSite: 'lax', path: '/api/users/refresh',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000
   });
 
   return res.status(201).json({
     success: true,
     message: 'Account registered successfully',
-    token,
-    user,
-    employee
+    token, user, employee
   });
 });
 
@@ -156,37 +162,75 @@ router.post('/login', loginLimiter, (req, res) => {
   // Successful login
   clearFailedAttempts(lockKey);
   const employee = dbHelper.get('SELECT id, user_id, employee_code, department, designation, joining_date FROM employees WHERE user_id = ?', [user.id]);
-  const token = generateToken(user);
+  const token        = generateToken(user);
+  const refreshToken = generateRefreshToken(user.id);
 
   res.cookie('auth_token', token, {
-    httpOnly: true,
-    sameSite: 'lax',
+    httpOnly: true, sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 8 * 60 * 60 * 1000 // 8 hours
+    maxAge: 8 * 60 * 60 * 1000 // 8 hours (dev); 15m tokens rotated via /refresh in prod
+  });
+  res.cookie('refresh_token', refreshToken, {
+    httpOnly: true, sameSite: 'lax', path: '/api/users/refresh',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   });
 
   return res.json({
     success: true,
     message: `Authenticated as ${user.name} (${user.role})`,
     token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatar: user.avatar
-    },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
     employee: employee || null
   });
 });
 
 /**
  * POST /api/users/logout
- * Clears httpOnly auth cookie.
+ * Clears both httpOnly cookies and revokes refresh token in DB.
  */
 router.post('/logout', (req, res) => {
+  const raw = req.cookies?.refresh_token;
+  if (raw) {
+    const record = validateRefreshToken(raw);
+    if (record) revokeRefreshTokens(record.user_id);
+  }
   res.clearCookie('auth_token');
+  res.clearCookie('refresh_token', { path: '/api/users/refresh' });
   return res.json({ success: true, message: 'Signed out successfully' });
+});
+
+/**
+ * POST /api/users/refresh
+ * Issues a new access token + rotates the refresh token (single-use rotation).
+ * The refresh cookie is scoped to this path only.
+ */
+router.post('/refresh', (req, res) => {
+  const raw = req.cookies?.refresh_token;
+  if (!raw) return res.status(401).json({ error: 'No refresh token provided' });
+
+  const record = validateRefreshToken(raw);
+  if (!record) return res.status(401).json({ error: 'Refresh token invalid or expired — please log in again' });
+
+  const user = dbHelper.get('SELECT id, name, email, role, avatar FROM users WHERE id = ?', [record.user_id]);
+  if (!user) return res.status(401).json({ error: 'User not found' });
+
+  // Rotate: issue new access + refresh token pair
+  const newAccessToken  = generateToken(user);
+  const newRefreshToken = generateRefreshToken(user.id); // also purges old token
+
+  res.cookie('auth_token', newAccessToken, {
+    httpOnly: true, sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 8 * 60 * 60 * 1000
+  });
+  res.cookie('refresh_token', newRefreshToken, {
+    httpOnly: true, sameSite: 'lax', path: '/api/users/refresh',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
+  return res.json({ success: true, message: 'Token refreshed successfully' });
 });
 
 /**

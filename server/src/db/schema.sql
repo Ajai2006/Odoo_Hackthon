@@ -1,6 +1,7 @@
 -- Dayflow HRMS SQLite Schema
 PRAGMA foreign_keys = OFF;
 DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS refresh_tokens;
 DROP TABLE IF EXISTS leave_balances;
 DROP TABLE IF EXISTS leave_requests;
 DROP TABLE IF EXISTS attendance;
@@ -85,6 +86,16 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     target_id INTEGER,
     details TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Refresh Tokens table — stores hashed refresh tokens for JWT rotation
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT UNIQUE NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Indexes for performance & analytical queries
