@@ -1,0 +1,51 @@
+name: Dayflow HRMS — CI Test Suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Node.js Unit & Integration Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server dependencies
+        run: npm install
+        working-directory: server
+
+      - name: Install client dependencies
+        run: npm install
+        working-directory: client
+
+      - name: Seed database
+        run: npm run seed
+        working-directory: server
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci_test_jwt_secret_dayflow_hrms_2026
+          DB_PATH: dayflow.db
+
+      - name: Run full test suite (21 suites)
+        run: npm test
+        working-directory: server
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci_test_jwt_secret_dayflow_hrms_2026
+          DB_PATH: dayflow.db
