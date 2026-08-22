@@ -63,51 +63,103 @@ export function AnalyticsView({ currentUser, showToast }) {
     const { departmentBreakdown = [], monthlyTrend = [] } = data;
     const genDate = new Date().toLocaleString();
 
-    const metadata = [
-      `"DAYFLOW HRMS — PERFORMANCE & ANALYTICS AUDIT REPORT"`,
-      `"Generated On","${genDate}"`,
-      `"User Role","${currentUser?.role || 'employee'}"`,
-      `"Department Scope","${effectiveDept}"`,
-      `"Attendance Rate","${data.metrics?.attendancePercentage || 0}%"`,
-      `"Total Present Shifts",${data.metrics?.presentCount || 0}`,
-      `"Total Late Arrivals",${data.metrics?.lateArrivalCount || 0}`,
-      `""`
-    ];
-
-    let headers = [];
-    let rows = [];
-
     if (isEmployee) {
-      headers = ['"Shift Date"', '"Status"', '"Clock-In Time"', '"Clock-Out Time"', '"Hours Worked (h)"', '"Punctuality Status"', '"Notes"'];
-      rows = myHistory.map(r => [
+      // Employee Individual Analysis Sheet
+      const metadata = [
+        `"========================================================================================="`,
+        `"DAYFLOW HRMS — INDIVIDUAL EMPLOYEE ATTENDANCE & PERFORMANCE REPORT"`,
+        `"========================================================================================="`,
+        `"Employee Name","${currentUser?.name || ''}"`,
+        `"Employee Role","${currentUser?.role || 'employee'}"`,
+        `"Department","${userDept}"`,
+        `"Report Generated On","${genDate}"`,
+        `"Overall Attendance Rate","${data.metrics?.attendancePercentage || 0}%"`,
+        `"Total Present Shifts",${data.metrics?.presentCount || 0}`,
+        `"Total Late Arrivals",${data.metrics?.lateArrivalCount || 0}`,
+        `""`,
+        `"--- INDIVIDUAL SHIFT-BY-SHIFT ATTENDANCE LOGS ---"`
+      ];
+      const headers = ['"Shift Date"', '"Status"', '"Clock-In Timestamp"', '"Clock-Out Timestamp"', '"Hours Worked (h)"', '"Punctuality Status"', '"Shift Remarks"'];
+      const rows = myHistory.map(r => [
         `"${r.date || ''}"`,
         `"${r.status || 'not_marked'}"`,
         `"${r.check_in || '—'}"`,
         `"${r.check_out || '—'}"`,
         r.work_hours || 0,
         `"${r.late_minutes > 0 ? `Late (+${r.late_minutes}m)` : r.check_in ? 'On Time' : 'Absent'}"`,
-        `"${(r.notes || '').replace(/"/g, '""')}"`
+        `"${(r.notes || 'Regular Shift').replace(/"/g, '""')}"`
       ]);
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [...metadata, headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `Dayflow_Personal_Attendance_Report_${currentUser?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Export Complete', 'Individual shift performance report exported to CSV.', 'success');
     } else {
-      headers = ['"Department"', '"Headcount Staff"', '"Present Shifts"', '"Late Incidents"', '"Average Shift Hours (h)"'];
-      rows = departmentBreakdown.map(d => [
+      // HR Executive Master Sheet
+      const metadata = [
+        `"========================================================================================="`,
+        `"DAYFLOW HRMS — MASTER EXECUTIVE WORKFORCE ANALYTICS REPORT"`,
+        `"========================================================================================="`,
+        `"Report Generated On","${genDate}"`,
+        `"Executive Role","${currentUser?.role || 'admin'}"`,
+        `"Department Scope","${effectiveDept}"`,
+        `"Overall Attendance Rate","${data.metrics?.attendancePercentage || 0}%"`,
+        `"Total Present Shifts",${data.metrics?.presentCount || 0}`,
+        `"Total Approved Leaves",${data.metrics?.leaveCount || 0}`,
+        `"Total Unplanned Absences",${data.metrics?.absentCount || 0}`,
+        `"Total Late Arrivals",${data.metrics?.lateArrivalCount || 0}`,
+        `"Average Daily Work Hours","${data.metrics?.avgDailyWorkHours || 0} h"`,
+        `""`,
+        `"--- SECTION 1: DEPARTMENT-BY-DEPARTMENT PERFORMANCE BREAKDOWN ---"`,
+        `"Department","Staff Headcount","Present Shifts","Late Incidents","Average Shift Hours (h)"`
+      ];
+
+      const deptRows = departmentBreakdown.map(d => [
         `"${d.department}"`,
         d.employeeCount || 0,
         d.presentLogs || 0,
         d.lateLogs || 0,
         d.deptAvgHours || 0
       ]);
-    }
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [...metadata, headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Dayflow_Analytics_Report_${effectiveDept}_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('Export Complete', 'Detailed analytics report exported to CSV.', 'success');
+      const trendHeader = [
+        `""`,
+        `"--- SECTION 2: 6-WEEK HISTORICAL ATTENDANCE TREND ANALYSIS ---"`,
+        `"Week Start Date","Total Shifts Tracked","Attendance Rate (%)","Late Clock-Ins","Average Shift Hours (h)"`
+      ];
+
+      const trendRows = monthlyTrend.map(t => {
+        const r = t.total_records > 0 ? Math.round((t.present_count / t.total_records) * 100) : 0;
+        return [
+          `"${t.week_start || ''}"`,
+          t.total_records || 0,
+          `"${r}%"`,
+          t.late_count || 0,
+          t.avg_hours || 0
+        ];
+      });
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [
+        ...metadata,
+        ...deptRows.map(e => e.join(',')),
+        ...trendHeader,
+        ...trendRows.map(e => e.join(','))
+      ].join('\n');
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `Dayflow_HR_Master_Analytics_Report_${effectiveDept}_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Export Complete', 'HR Master Executive Analytics report exported to CSV.', 'success');
+    }
   };
 
   if (loading) return <AnalyticsSkeleton />;

@@ -217,16 +217,49 @@ export function AdminMonitor({ currentUser, showToast }) {
               onClick={() => {
                 if (!records || records.length === 0) return;
                 const genDate = new Date().toLocaleString();
-                const metadata = [
-                  `"DAYFLOW HRMS — ENTERPRISE ATTENDANCE & PUNCTUALITY AUDIT REPORT"`,
-                  `"Generated On","${genDate}"`,
-                  `"Report Date","${date}"`,
-                  `"Department Scope","${effectiveDept}"`,
-                  `"Status Filter","${status}"`,
-                  `"Total Records Exported",${records.length}`,
+
+                // 1. Overall Summary Section
+                const section1 = [
+                  `"========================================================================================="`,
+                  `"DAYFLOW HRMS — MASTER EXECUTIVE & INDIVIDUAL EMPLOYEE ANALYSIS REPORT"`,
+                  `"========================================================================================="`,
+                  `"Report Generated On","${genDate}"`,
+                  `"Department Filter Scope","${effectiveDept}"`,
+                  `"Status Filter Scope","${status}"`,
+                  `"Total Headcount Evaluated",${records.length}`,
+                  `""`,
+                  `"--- SECTION 1: OVERALL WORKFORCE SUMMARY METRICS ---"`,
+                  `"Metric Name","Metric Value","Target Benchmark"`,
+                  `"Total Staff Headcount",${records.length},"—"`,
+                  `"Present Staff Today",${inCount},"${total > 0 ? `${Math.round((inCount/total)*100)}% attendance` : '0%'}"`,
+                  `"Unplanned Absences Today",${absent},"< 5% target"`,
+                  `"Staff On Leave Today",${leave},"Approved PTO"`,
+                  `"Late Clock-Ins Today",${late},"09:30 AM Shift Start"`,
                   `""`
                 ];
-                const headers = [
+
+                // 2. Individual Employee Analysis Summary Section
+                const empMap = new Map();
+                records.forEach(r => {
+                  if (!empMap.has(r.employee_id)) {
+                    empMap.set(r.employee_id, {
+                      code: r.employee_code || '',
+                      name: r.employee_name || '',
+                      email: r.email || r.employee_email || '',
+                      dept: r.department || '',
+                      designation: r.designation || '',
+                      status: r.status || 'not_marked',
+                      checkIn: r.check_in || '—',
+                      checkOut: r.check_out || '—',
+                      hours: r.work_hours || 0,
+                      late: r.late_minutes || 0,
+                      notes: r.notes || 'Regular Shift'
+                    });
+                  }
+                });
+
+                const section2Headers = [
+                  '"--- SECTION 2: INDIVIDUAL EMPLOYEE ATTENDANCE & SHIFT BREAKDOWN ---"',
                   '"Employee Code"',
                   '"Employee Name"',
                   '"Work Email"',
@@ -239,46 +272,50 @@ export function AdminMonitor({ currentUser, showToast }) {
                   '"Hours Worked (h)"',
                   '"Overtime Hours (h)"',
                   '"Late Arrival (mins)"',
-                  '"Punctuality Status"',
+                  '"Punctuality Rating"',
                   '"Shift Remarks"'
                 ];
 
-                const rows = records.map(r => {
-                  const hours = r.work_hours || 0;
-                  const overtime = Math.max(0, (hours - 8.5)).toFixed(2);
-                  const late = r.late_minutes || 0;
-                  const punctuality = late > 0 ? `Late (+${late}m)` : r.check_in ? 'On Time' : 'Absent/Pending';
+                const section2Rows = Array.from(empMap.values()).map(e => {
+                  const overtime = Math.max(0, (e.hours - 8.5)).toFixed(2);
+                  const punctuality = e.late > 0 ? `Late (+${e.late}m)` : e.checkIn !== '—' ? 'On Time' : 'Absent/Pending';
                   return [
-                    `"${r.employee_code || ''}"`,
-                    `"${r.employee_name || ''}"`,
-                    `"${r.email || r.employee_email || ''}"`,
-                    `"${r.department || ''}"`,
-                    `"${r.designation || ''}"`,
-                    `"${r.date || date}"`,
-                    `"${r.status || 'not_marked'}"`,
-                    `"${r.check_in || '—'}"`,
-                    `"${r.check_out || '—'}"`,
-                    hours,
+                    `"${e.code}"`,
+                    `"${e.name}"`,
+                    `"${e.email}"`,
+                    `"${e.dept}"`,
+                    `"${e.designation}"`,
+                    `"${date}"`,
+                    `"${e.status}"`,
+                    `"${e.checkIn}"`,
+                    `"${e.checkOut}"`,
+                    e.hours,
                     overtime,
-                    late,
+                    e.late,
                     `"${punctuality}"`,
-                    `"${(r.notes || 'Regular Shift').replace(/"/g, '""')}"`
+                    `"${e.notes.replace(/"/g, '""')}"`
                   ];
                 });
 
-                const csvContent = 'data:text/csv;charset=utf-8,' + [...metadata, headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-                const encodedUri = encodeURI(csvContent);
+                const fullCsvContent = 'data:text/csv;charset=utf-8,' + [
+                  ...section1,
+                  section2Headers[0],
+                  section2Headers.slice(1).join(','),
+                  ...section2Rows.map(r => r.join(','))
+                ].join('\n');
+
+                const encodedUri = encodeURI(fullCsvContent);
                 const link = document.createElement('a');
                 link.setAttribute('href', encodedUri);
-                link.setAttribute('download', `Dayflow_Attendance_Detailed_Audit_${date}.csv`);
+                link.setAttribute('download', `Dayflow_HR_Master_Executive_Report_${date}.csv`);
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                showToast('Export Complete', 'Comprehensive attendance audit report exported to CSV.', 'success');
+                showToast('Export Complete', 'HR Master Executive & Individual Analysis exported to CSV.', 'success');
               }}
               style={{ display:'flex', alignItems:'center', gap:'0.35rem', fontSize:'12px', padding:'0.45rem 0.85rem' }}
             >
-              Export Detailed CSV
+              Export HR Master CSV
             </button>
           </div>
         </div>
