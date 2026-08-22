@@ -25,7 +25,6 @@ Odoo_Hackthon/
 │   │   ├── routes/         Attendance, Users, Leaves, and Workforce Risk API routes
 │   │   └── server.js       Express application entry point & CORS configuration
 │   └── tests/              21 Native automated test suites
-├── archive/                Archived legacy prototype stacks (Unused; preserved for reference)
 ├── dev.js                  Full-stack concurrent dev process orchestrator
 └── README.md
 ```
