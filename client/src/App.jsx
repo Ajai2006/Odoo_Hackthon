@@ -63,15 +63,15 @@ export function App() {
         await api.login(userIdOverride);
       }
       
-      let meRes;
+      let meRes = null;
       try {
         meRes = await api.getCurrentUser();
       } catch (e) {
-        // Default initial session to Alex Chen (Employee) via JWT login
-        meRes = await api.login(2);
+        // No active session — show login page first
+        meRes = null;
       }
 
-      if (meRes.user) {
+      if (meRes && meRes.user) {
         const fullUser = { ...meRes.user, employee: meRes.employee };
         setCurrentUser(fullUser);
         setIsSignedOut(false);
@@ -81,7 +81,7 @@ export function App() {
         return null;
       }
     } catch (err) {
-      showToast('Load error', err.message, 'error');
+      setCurrentUser(null);
       return null;
     }
   };

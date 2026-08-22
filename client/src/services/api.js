@@ -32,6 +32,9 @@ async function request(endpoint, options = {}) {
     const data = await res.json();
     
     if (!res.ok) {
+      if (res.status === 401) {
+        setAuthToken(null);
+      }
       throw new Error(data.error || `HTTP error ${res.status}`);
     }
 
