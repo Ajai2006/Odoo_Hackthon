@@ -216,32 +216,69 @@ export function AdminMonitor({ currentUser, showToast }) {
               className="btn btn-primary"
               onClick={() => {
                 if (!records || records.length === 0) return;
-                const headers = ['Employee Name', 'Employee Code', 'Department', 'Designation', 'Date', 'Status', 'Clock In', 'Clock Out', 'Hours Worked', 'Late Minutes'];
-                const rows = records.map(r => [
-                  `"${r.employee_name || ''}"`,
-                  `"${r.employee_code || ''}"`,
-                  `"${r.department || ''}"`,
-                  `"${r.designation || ''}"`,
-                  `"${r.date || date}"`,
-                  `"${r.status || 'not_marked'}"`,
-                  `"${r.check_in || ''}"`,
-                  `"${r.check_out || ''}"`,
-                  r.work_hours || 0,
-                  r.late_minutes || 0
-                ]);
-                const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+                const genDate = new Date().toLocaleString();
+                const metadata = [
+                  `"DAYFLOW HRMS — ENTERPRISE ATTENDANCE & PUNCTUALITY AUDIT REPORT"`,
+                  `"Generated On","${genDate}"`,
+                  `"Report Date","${date}"`,
+                  `"Department Scope","${effectiveDept}"`,
+                  `"Status Filter","${status}"`,
+                  `"Total Records Exported",${records.length}`,
+                  `""`
+                ];
+                const headers = [
+                  '"Employee Code"',
+                  '"Employee Name"',
+                  '"Work Email"',
+                  '"Department"',
+                  '"Designation"',
+                  '"Shift Date"',
+                  '"Attendance Status"',
+                  '"Clock-In Timestamp"',
+                  '"Clock-Out Timestamp"',
+                  '"Hours Worked (h)"',
+                  '"Overtime Hours (h)"',
+                  '"Late Arrival (mins)"',
+                  '"Punctuality Status"',
+                  '"Shift Remarks"'
+                ];
+
+                const rows = records.map(r => {
+                  const hours = r.work_hours || 0;
+                  const overtime = Math.max(0, (hours - 8.5)).toFixed(2);
+                  const late = r.late_minutes || 0;
+                  const punctuality = late > 0 ? `Late (+${late}m)` : r.check_in ? 'On Time' : 'Absent/Pending';
+                  return [
+                    `"${r.employee_code || ''}"`,
+                    `"${r.employee_name || ''}"`,
+                    `"${r.email || r.employee_email || ''}"`,
+                    `"${r.department || ''}"`,
+                    `"${r.designation || ''}"`,
+                    `"${r.date || date}"`,
+                    `"${r.status || 'not_marked'}"`,
+                    `"${r.check_in || '—'}"`,
+                    `"${r.check_out || '—'}"`,
+                    hours,
+                    overtime,
+                    late,
+                    `"${punctuality}"`,
+                    `"${(r.notes || 'Regular Shift').replace(/"/g, '""')}"`
+                  ];
+                });
+
+                const csvContent = 'data:text/csv;charset=utf-8,' + [...metadata, headers.join(','), ...rows.map(e => e.join(','))].join('\n');
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement('a');
                 link.setAttribute('href', encodedUri);
-                link.setAttribute('download', `Dayflow_Attendance_Report_${date}.csv`);
+                link.setAttribute('download', `Dayflow_Attendance_Detailed_Audit_${date}.csv`);
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                showToast('Export Complete', 'Attendance report downloaded as CSV.', 'success');
+                showToast('Export Complete', 'Comprehensive attendance audit report exported to CSV.', 'success');
               }}
               style={{ display:'flex', alignItems:'center', gap:'0.35rem', fontSize:'12px', padding:'0.45rem 0.85rem' }}
             >
-              Export CSV
+              Export Detailed CSV
             </button>
           </div>
         </div>
