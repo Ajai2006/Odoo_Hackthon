@@ -152,6 +152,9 @@ export function AdminMonitor({ currentUser, showToast }) {
                   <option value="Design">Design</option>
                   <option value="HR & People">HR &amp; People</option>
                   <option value="Sales">Sales</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="Operations">Operations</option>
                 </select>
                 <ChevronDown size={14} className="select-caret" aria-hidden="true" />
               </div>

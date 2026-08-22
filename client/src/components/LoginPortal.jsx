@@ -466,12 +466,39 @@ export function LoginPortal({ onLoginSuccess }) {
                 border: '1px solid #e2e8f0',
                 textAlign: 'left',
                 fontSize: '11px',
-                color: '#334155'
+                color: '#334155',
+                maxHeight: '220px',
+                overflowY: 'auto'
               }}>
-                <div style={{ fontWeight: 600, color: '#0284c7', marginBottom: '0.4rem' }}>Standard Password: Password123!</div>
-                <div>🛡️ <strong>Admin:</strong> sarah.jenkins@dayflow.io</div>
-                <div>👔 <strong>Manager:</strong> marcus.vance@dayflow.io</div>
-                <div>💻 <strong>Employee:</strong> alex.chen@dayflow.io</div>
+                <div style={{ fontWeight: 600, color: '#0284c7', marginBottom: '0.4rem' }}>Standard Password: Password123! (Click email to fill)</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <div>🛡️ <strong>Admins:</strong></div>
+                  <div style={{ paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span onClick={() => setEmail('sarah.jenkins@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• sarah.jenkins@dayflow.io (HR)</span>
+                    <span onClick={() => setEmail('jonathan.hayes@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• jonathan.hayes@dayflow.io (Finance)</span>
+                    <span onClick={() => setEmail('vikram.malhotra@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• vikram.malhotra@dayflow.io (Operations)</span>
+                  </div>
+
+                  <div>👔 <strong>Managers:</strong></div>
+                  <div style={{ paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span onClick={() => setEmail('marcus.vance@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• marcus.vance@dayflow.io (Design)</span>
+                    <span onClick={() => setEmail('maria.santos@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• maria.santos@dayflow.io (Engineering)</span>
+                    <span onClick={() => setEmail('liam.oconnor@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• liam.oconnor@dayflow.io (Sales)</span>
+                    <span onClick={() => setEmail('aisha.khan@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• aisha.khan@dayflow.io (Marketing)</span>
+                    <span onClick={() => setEmail('robert.taylor@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• robert.taylor@dayflow.io (Operations)</span>
+                  </div>
+
+                  <div>💻 <strong>Staff / Employees (12):</strong></div>
+                  <div style={{ paddingLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span onClick={() => setEmail('alex.chen@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• alex.chen@dayflow.io (Eng)</span>
+                    <span onClick={() => setEmail('priya.patel@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• priya.patel@dayflow.io (Eng)</span>
+                    <span onClick={() => setEmail('elena.rostova@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• elena.rostova@dayflow.io (HR)</span>
+                    <span onClick={() => setEmail('david.kim@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• david.kim@dayflow.io (Sales)</span>
+                    <span onClick={() => setEmail('fatima.m@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• fatima.m@dayflow.io (DevOps)</span>
+                    <span onClick={() => setEmail('sophie.dubois@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• sophie.dubois@dayflow.io (Design)</span>
+                    <span onClick={() => setEmail('carlos.mendez@dayflow.io')} style={{ cursor: 'pointer', color: '#0284c7' }}>• carlos.mendez@dayflow.io (Finance)</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

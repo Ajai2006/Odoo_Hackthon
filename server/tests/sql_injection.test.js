@@ -29,7 +29,7 @@ test('SQL Injection - Login endpoint rejects injection payloads safely', async (
 
     // Assert users table still exists and headcount is unchanged
     const users = dbHelper.query('SELECT COUNT(*) as count FROM users');
-    assert.strictEqual(users[0].count, 7, 'Users table headcount should remain intact');
+    assert.strictEqual(users[0].count, 20, 'Users table headcount should remain intact');
   }
 });
 
@@ -53,7 +53,7 @@ test('SQL Injection - Search and filter query parameters treat injection as lite
 
     // Verify database tables were not modified by payload
     const count = dbHelper.get('SELECT COUNT(*) as count FROM employees');
-    assert.strictEqual(count.count, 7, 'Employee count should remain unchanged after injection attempt');
+    assert.strictEqual(count.count, 20, 'Employee count should remain unchanged after injection attempt');
   }
 });
 

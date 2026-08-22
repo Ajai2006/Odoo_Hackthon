@@ -1,7 +1,7 @@
 import { db, initDb } from './index.js';
 
 export function seedDatabase() {
-  console.log('🌱 Seeding Dayflow HRMS Database...');
+  console.log('🌱 Seeding Dayflow HRMS Database with 20 Persona Members...');
 
   // Ensure schema exists
   initDb();
@@ -16,7 +16,7 @@ export function seedDatabase() {
   db.exec('DELETE FROM users;');
   db.exec('PRAGMA foreign_keys = ON;');
 
-  // 1. Insert Users (Admin + Employees + Manager)
+  // 1. Insert 20 Users (Admin + Managers + Employees)
   const insertUser = db.prepare(`
     INSERT INTO users (id, name, email, password_hash, role, avatar)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -31,14 +31,27 @@ export function seedDatabase() {
     [4, 'Marcus Vance', 'marcus.vance@dayflow.io', defaultPasswordHash, 'manager', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'],
     [5, 'Elena Rostova', 'elena.rostova@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80'],
     [6, 'David Kim', 'david.kim@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'],
-    [7, 'Fatima Al-Mansoor', 'fatima.m@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80']
+    [7, 'Fatima Al-Mansoor', 'fatima.m@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80'],
+    [8, 'Jonathan Hayes', 'jonathan.hayes@dayflow.io', defaultPasswordHash, 'admin', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80'],
+    [9, 'Maria Santos', 'maria.santos@dayflow.io', defaultPasswordHash, 'manager', 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80'],
+    [10, 'Liam O\'Connor', 'liam.oconnor@dayflow.io', defaultPasswordHash, 'manager', 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80'],
+    [11, 'Aisha Khan', 'aisha.khan@dayflow.io', defaultPasswordHash, 'manager', 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&auto=format&fit=crop&q=80'],
+    [12, 'Robert Taylor', 'robert.taylor@dayflow.io', defaultPasswordHash, 'manager', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80'],
+    [13, 'Sophie Dubois', 'sophie.dubois@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80'],
+    [14, 'Carlos Mendez', 'carlos.mendez@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80'],
+    [15, 'Nina Gupta', 'nina.gupta@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80'],
+    [16, 'Hiroshi Tanaka', 'hiroshi.tanaka@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=150&auto=format&fit=crop&q=80'],
+    [17, 'Chloe Bennet', 'chloe.bennet@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80'],
+    [18, 'Vikram Malhotra', 'vikram.malhotra@dayflow.io', defaultPasswordHash, 'admin', 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=150&auto=format&fit=crop&q=80'],
+    [19, 'Hannah Schmidt', 'hannah.schmidt@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'],
+    [20, 'Lucas Silva', 'lucas.silva@dayflow.io', defaultPasswordHash, 'employee', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80']
   ];
 
   for (const u of usersData) {
     insertUser.run(...u);
   }
 
-  // 2. Insert Employees
+  // 2. Insert 20 Employees
   const insertEmployee = db.prepare(`
     INSERT INTO employees (id, user_id, employee_code, department, designation, joining_date)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -51,20 +64,33 @@ export function seedDatabase() {
     [4, 4, 'DF-1004', 'Design', 'Lead Product Designer', '2023-01-20'],
     [5, 5, 'DF-1005', 'HR & People', 'Talent Acquisition Partner', '2023-04-10'],
     [6, 6, 'DF-1006', 'Sales', 'Enterprise Account Executive', '2023-08-01'],
-    [7, 7, 'DF-1007', 'Engineering', 'Staff Cloud & DevOps Engineer', '2023-11-15']
+    [7, 7, 'DF-1007', 'Engineering', 'Staff Cloud & DevOps Engineer', '2023-11-15'],
+    [8, 8, 'DF-1008', 'Finance', 'VP of Finance / Admin', '2021-09-01'],
+    [9, 9, 'DF-1009', 'Engineering', 'Engineering Director', '2022-02-14'],
+    [10, 10, 'DF-1010', 'Sales', 'VP of Global Sales', '2022-05-10'],
+    [11, 11, 'DF-1011', 'Marketing', 'Head of Growth Marketing', '2023-02-01'],
+    [12, 12, 'DF-1012', 'Operations', 'Director of Operations', '2023-03-12'],
+    [13, 13, 'DF-1013', 'Design', 'Senior UI/UX Designer', '2023-06-18'],
+    [14, 14, 'DF-1014', 'Finance', 'Senior Financial Analyst', '2023-07-22'],
+    [15, 15, 'DF-1015', 'Marketing', 'Content Strategy Lead', '2023-09-05'],
+    [16, 16, 'DF-1016', 'Engineering', 'Backend Systems Engineer', '2023-10-10'],
+    [17, 17, 'DF-1017', 'Operations', 'Logistics & HR Coordinator', '2023-12-01'],
+    [18, 18, 'DF-1018', 'Operations', 'Chief Operating Officer / Admin', '2021-05-15'],
+    [19, 19, 'DF-1019', 'Finance', 'Payroll Specialist', '2024-01-08'],
+    [20, 20, 'DF-1020', 'Sales', 'Business Development Rep', '2024-02-01']
   ];
 
   for (const e of employeesData) {
     insertEmployee.run(...e);
   }
 
-  // 3. Insert Leave Balances
+  // 3. Insert Leave Balances for all 20 Employees
   const insertBalance = db.prepare(`
     INSERT INTO leave_balances (employee_id, paid_balance, sick_balance, unpaid_balance)
     VALUES (?, ?, ?, ?)
   `);
-  for (let empId = 1; empId <= 7; empId++) {
-    insertBalance.run(empId, 18.0, 10.0, 30.0);
+  for (let empId = 1; empId <= 20; empId++) {
+    insertBalance.run(empId, 18.0 + (empId % 5), 10.0, 30.0);
   }
 
   // 4. Insert Seed Leave Requests
@@ -82,20 +108,22 @@ export function seedDatabase() {
     [1, 2, 'paid', formatYMD(nextWeekStart), formatYMD(nextWeekEnd), 3.0, 'Annual family road trip', 'pending', null, null],
     [2, 3, 'sick', '2026-08-10', '2026-08-11', 2.0, 'Dental surgery and recovery', 'approved', 1, 'Approved. Get well soon!'],
     [3, 5, 'paid', '2026-08-15', '2026-08-16', 2.0, 'Personal rejuvenation days', 'approved', 1, 'Approved'],
-    [4, 6, 'unpaid', '2026-08-05', '2026-08-07', 3.0, 'Attending overseas wedding', 'rejected', 1, 'Product launch blackout window. Request denied.']
+    [4, 6, 'unpaid', '2026-08-05', '2026-08-07', 3.0, 'Attending overseas wedding', 'rejected', 1, 'Product launch blackout window. Request denied.'],
+    [5, 13, 'paid', formatYMD(nextWeekStart), formatYMD(nextWeekEnd), 3.0, 'Design conference attendance', 'pending', null, null],
+    [6, 16, 'sick', '2026-08-18', '2026-08-19', 2.0, 'Seasonal flu recovery', 'approved', 9, 'Approved by Eng Director']
   ];
 
   for (const l of seedLeaves) {
     insertLeave.run(...l);
   }
 
-  // 5. Generate Historical Attendance Records (Past 28 days)
+  // 5. Generate Historical Attendance Records (Past 28 days for 20 Members)
   const insertAttendance = db.prepare(`
     INSERT INTO attendance (employee_id, date, check_in, check_out, status, work_hours, late_minutes, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  for (let empId = 1; empId <= 7; empId++) {
+  for (let empId = 1; empId <= 20; empId++) {
     for (let daysAgo = 28; daysAgo >= 1; daysAgo--) {
       const dateObj = new Date();
       dateObj.setDate(today.getDate() - daysAgo);
@@ -152,15 +180,18 @@ export function seedDatabase() {
     }
   }
 
-  // Seed Today's Attendance
+  // Seed Today's Attendance for 20 Members
   const todayStr = formatYMD(today);
   insertAttendance.run(3, todayStr, `${todayStr} 08:50:00`, null, 'incomplete', 0.0, 0, 'Active shift in progress');
   insertAttendance.run(4, todayStr, `${todayStr} 09:00:00`, `${todayStr} 13:15:00`, 'half_day', 4.25, 0, 'Medical appointment in afternoon');
   insertAttendance.run(5, todayStr, null, null, 'leave', 0.0, 0, 'Approved Sick Leave');
   insertAttendance.run(6, todayStr, `${todayStr} 09:48:00`, null, 'incomplete', 0.0, 18, 'Client commute delay');
   insertAttendance.run(7, todayStr, `${todayStr} 08:55:00`, null, 'incomplete', 0.0, 0, 'Active shift');
+  insertAttendance.run(9, todayStr, `${todayStr} 08:45:00`, null, 'incomplete', 0.0, 0, 'Director shift active');
+  insertAttendance.run(11, todayStr, `${todayStr} 09:05:00`, null, 'incomplete', 0.0, 0, 'Marketing meeting active');
+  insertAttendance.run(13, todayStr, `${todayStr} 09:42:00`, null, 'incomplete', 0.0, 12, 'Design review prep');
 
-  console.log('✅ Database seeded successfully!');
+  console.log('✅ Database successfully seeded with 20 Members!');
 }
 
 if (process.argv[1] && process.argv[1].endsWith('seed.js')) {
