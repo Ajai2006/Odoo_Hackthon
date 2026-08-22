@@ -1,13 +1,12 @@
 // API Client for Dayflow Attendance Service
-let currentUserId = localStorage.getItem('dayflow_user_id') || 2; // Default to Alex Chen
+let inMemoryToken = null;
 
-export function setCurrentUserId(id) {
-  currentUserId = id;
-  localStorage.setItem('dayflow_user_id', id);
+export function setAuthToken(token) {
+  inMemoryToken = token;
 }
 
-export function getCurrentUserId() {
-  return currentUserId;
+export function getAuthToken() {
+  return inMemoryToken;
 }
 
 async function request(endpoint, options = {}) {
@@ -15,12 +14,16 @@ async function request(endpoint, options = {}) {
   
   const headers = {
     'Content-Type': 'application/json',
-    'x-user-id': String(currentUserId),
+    ...(inMemoryToken ? { 'Authorization': `Bearer ${inMemoryToken}` } : {}),
     ...(options.headers || {})
   };
 
   try {
-    const res = await fetch(url, { ...options, headers });
+    const res = await fetch(url, { 
+      ...options, 
+      headers,
+      credentials: 'same-origin'
+    });
     const data = await res.json();
     
     if (!res.ok) {
@@ -36,9 +39,15 @@ async function request(endpoint, options = {}) {
 
 export const api = {
   // Users & Auth
-  // getDemoPersonas — returns only {id, name, role, avatar, department}; blocked in production
   getDemoPersonas: () => request('/api/users/demo-personas'),
   getCurrentUser: () => request('/api/users/me'),
+  login: (userId) => request('/api/users/login', {
+    method: 'POST',
+    body: JSON.stringify({ userId })
+  }),
+  logout: () => request('/api/users/logout', {
+    method: 'POST'
+  }),
 
   // Attendance Endpoints
   getTodayStatus: () => request('/api/attendance/today'),

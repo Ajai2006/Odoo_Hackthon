@@ -60,10 +60,17 @@ export function App() {
       setUsersList(list);
 
       if (userIdOverride) {
-        setCurrentUserId(userIdOverride);
+        await api.login(userIdOverride);
       }
       
-      const meRes = await api.getCurrentUser();
+      let meRes;
+      try {
+        meRes = await api.getCurrentUser();
+      } catch (e) {
+        // Default initial session to Alex Chen (Employee) via JWT login
+        meRes = await api.login(2);
+      }
+
       if (meRes.user) {
         const fullUser = { ...meRes.user, employee: meRes.employee };
         setCurrentUser(fullUser);
@@ -133,7 +140,12 @@ export function App() {
   };
 
   /* Sign out */
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await api.logout();
+    } catch (e) {
+      // Ignore network errors on logout
+    }
     setCurrentUser(null);
     setIsSignedOut(true);
     showToast('Signed Out', 'You have been safely signed out of Dayflow HRMS.', 'info');

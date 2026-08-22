@@ -2,30 +2,30 @@
 
 > **Every workday, perfectly aligned.**
 
-Full-stack enterprise HRMS featuring **Attendance & Shift Management**, **Role-Based Access Control (RBAC)**, **Payroll**, **Leave Management**, and **Workforce Analytics**.
+Full-stack enterprise HRMS featuring **Attendance & Shift Management**, **JWT Authentication & RBAC**, **HttpOnly Cookie Security**, and **Workforce Analytics**.
 
 ---
 
-## 🏗️ Architecture & Modules
+## 🏗️ Architecture & Consolidated Stacks
 
 ```
 HRM/
-├── client/           React 18 + Vite (Dayflow Attendance & Analytics UI)
-├── server/           Express.js + Native SQLite (Attendance, RBAC & Analytics API)
-├── backend/          Django 5 + DRF (Accounts, Payroll)
-├── frontend/         React 18 + Vite + Tailwind CSS
-├── components/       Shared design system UI components
-└── dev.js            Full-stack orchestrator
+├── client/           React 18 + Vite (Production Attendance & Analytics UI)
+├── server/           Express.js + Native Node SQLite (Production API & JWT Auth)
+├── archive/          Archived prototypes & secondary stacks
+│   ├── backend/      Django 5 + DRF (Accounts, Payroll prototype)
+│   ├── frontend/     React 18 + Vite (Django frontend prototype)
+│   ├── src/          Next.js 15 SQLite prototype
+│   └── prototypes/   Standalone HTML/CSS prototypes
+├── dev.js            Full-stack orchestrator
+└── README.md
 ```
 
 ---
 
-## 🚀 Quick Start (Attendance & Analytics Module)
+## 🚀 Quick Start (Production Module)
 
-> **Evaluators: run these three commands from the repo root, in order.**
-> Requires Node.js 18+ only (no Python/Django setup needed for this module —
-> `backend/`, `frontend/`, and `src/` are separate/experimental prototypes not
-> used by this flow).
+> **Evaluators: run these commands from the repo root, in order.**
 
 ### 1. Install dependencies (installs server/ and client/ automatically)
 ```bash
@@ -45,21 +45,24 @@ npm run dev
 ```
 Then open **http://localhost:3000** in your browser.
 
-### 4. Run Automated Tests
+### 4. Run Automated Test Suite
 ```bash
-# Executes native test suite for validation & RBAC rules
+# Executes native test suite (Attendance validation, JWT auth bypass, and timestamp security)
 npm test
 ```
-All 6 tests (attendance validation + RBAC) should pass.
 
 ---
 
-## ⚡ Attendance & RBAC Endpoints
+## ⚡ Attendance, Auth & RBAC Endpoints
 
-| Method | Endpoint | Access | Description & Validation |
+| Method | Endpoint | Access | Description & Security Validation |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/attendance/checkin` | Employee | Clock in for today. Server-side rejection for duplicate check-ins (`409 Conflict`). Computes punctuality/late delta. |
-| `POST` | `/api/attendance/checkout` | Employee | Clock out for today. Validates `check_out > check_in` (`400 Bad Request`). Calculates work hours and determines `present` / `half_day` / `incomplete`. |
+| `POST` | `/api/users/login` | Public | Authenticates user, issues signed JWT token, and sets `httpOnly` cookie (`auth_token`). |
+| `POST` | `/api/users/logout` | Public | Clears `httpOnly` authentication cookie. |
+| `GET` | `/api/users/me` | Authenticated | Returns current authenticated user and employee profile. |
+| `GET` | `/api/users` | Admin | Returns full user roster. Enforced by `requireRole('admin')`. |
+| `POST` | `/api/attendance/checkin` | Employee | Clock in for today. Date/time derived strictly from server clock (`new Date()`). Custom timestamp overrides require admin debug flag (`?debug=true`). |
+| `POST` | `/api/attendance/checkout` | Employee | Clock out for today. Server clock enforced. Validates `check_out > check_in` (`400 Bad Request`). Calculates work hours and status. |
 | `GET` | `/api/attendance/today` | Employee | Returns today's active punch and shift status for live widget. |
 | `GET` | `/api/attendance` | Employee | Personal historical attendance records with date/month filtering. |
 | `GET` | `/api/attendance/weekly` | Employee | Current week (Mon-Sun) hours breakdown vs 40h target. |
@@ -87,22 +90,6 @@ All 6 tests (attendance validation + RBAC) should pass.
    - Access **Company Attendance Monitor** across all departments (Engineering, Design, HR, Sales).
    - Review organizational headcount, live clock-in roster, and executive analytics.
 
-4. **Authentication Portal**:
-   - Click top-right avatar and choose **Sign out** to access the dedicated **Login Portal**.
-
----
-
-## 💰 Payroll API
-
-| Method | Endpoint | Permission | Description |
-|---|---|---|---|
-| `GET` | `/api/payroll/my/?month=&year=` | Employee | Own payslip |
-| `GET` | `/api/payroll/` | Admin | All records |
-| `GET` | `/api/payroll/{id}/` | Admin | Specific record |
-| `POST` | `/api/payroll/` | Admin | Create record |
-| `PUT` | `/api/payroll/{id}/` | Admin | Update (requires `reason`) |
-| `GET` | `/api/payroll/{id}/audit/` | Admin | Audit log |
-| `GET` | `/api/payroll/stats/` | Admin | Dashboard stats |
-| `GET` | `/api/accounts/me/` | Any auth | Current user info |
-| `POST` | `/api/token/` | Public | Obtain JWT |
-| `POST` | `/api/token/refresh/` | Public | Refresh JWT |
+4. **Authentication & Security**:
+   - Click top-right avatar and choose **Sign out** to clear the `httpOnly` cookie session.
+   - All protected routes return `401 Unauthorized` if accessed without a valid signed JWT.

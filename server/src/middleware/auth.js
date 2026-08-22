@@ -1,33 +1,67 @@
+import jwt from 'jsonwebtoken';
 import { dbHelper } from '../db/index.js';
 
+export const JWT_SECRET = process.env.JWT_SECRET || 'dayflow-jwt-secret-key-2026';
+
 /**
- * Auth Middleware & Context Stub (Owned by Member 1)
- * Extracts authenticated user & employee record from headers/session.
- * Contract: employee has { id, user_id, department, designation, employee_code }
+ * Generate a signed JWT token for a user.
+ */
+export function generateToken(user) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role
+    },
+    JWT_SECRET,
+    { expiresIn: '8h' }
+  );
+}
+
+/**
+ * Auth Middleware — Verifies signed JWT from httpOnly cookie or Authorization header.
+ * Attaches user and employee records to req.
  */
 export function authContext(req, res, next) {
-  // Support header-based user switching for quick multi-role hackathon demo testing
-  const userIdHeader = req.headers['x-user-id'] || req.headers['authorization'];
-  let userId = userIdHeader ? parseInt(userIdHeader.replace('Bearer ', ''), 10) : 2; // Default to Alex Chen (Employee)
+  let token = null;
 
-  if (isNaN(userId)) {
-    userId = 2;
+  // 1. Extract from httpOnly cookie
+  if (req.cookies && req.cookies.auth_token) {
+    token = req.cookies.auth_token;
   }
 
-  // Fetch User
-  const user = dbHelper.get('SELECT id, name, email, role, avatar FROM users WHERE id = ?', [userId]);
-
-  if (!user) {
-    return res.status(401).json({ error: 'Unauthorized: User account not found' });
+  // 2. Extract from Authorization header (Bearer <jwt>)
+  if (!token && req.headers['authorization']) {
+    const authHeader = req.headers['authorization'];
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7).trim();
+    }
   }
 
-  // Fetch Employee profile
-  const employee = dbHelper.get('SELECT id, user_id, employee_code, department, designation, joining_date FROM employees WHERE user_id = ?', [user.id]);
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized: Valid authentication token required' });
+  }
 
-  req.user = user;
-  req.employee = employee || null;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
 
-  next();
+    // Fetch User
+    const user = dbHelper.get('SELECT id, name, email, role, avatar FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized: User account not found' });
+    }
+
+    // Fetch Employee profile
+    const employee = dbHelper.get('SELECT id, user_id, employee_code, department, designation, joining_date FROM employees WHERE user_id = ?', [user.id]);
+
+    req.user = user;
+    req.employee = employee || null;
+
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid or expired authentication token' });
+  }
 }
 
 /**

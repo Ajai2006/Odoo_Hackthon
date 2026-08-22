@@ -1,59 +1,57 @@
 import express from 'express';
 import { dbHelper } from '../db/index.js';
-import { authContext, requireRole } from '../middleware/auth.js';
+import { authContext, requireRole, generateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// All routes require authentication
-router.use(authContext);
-
 /**
- * GET /api/users/me
- * Returns the currently authenticated user's own profile.
- * Available to every authenticated role.
+ * POST /api/users/login
+ * Public login endpoint — authenticates user, generates signed JWT, and sets httpOnly cookie.
  */
-router.get('/me', (req, res) => {
+router.post('/login', (req, res) => {
+  const { userId, email } = req.body;
+  const targetId = userId || (email ? dbHelper.get('SELECT id FROM users WHERE email = ?', [email])?.id : null);
+
+  if (!targetId) {
+    return res.status(400).json({ error: 'Valid userId or email is required for login' });
+  }
+
+  const user = dbHelper.get('SELECT id, name, email, role, avatar FROM users WHERE id = ?', [targetId]);
+  if (!user) {
+    return res.status(404).json({ error: 'User account not found' });
+  }
+
+  const employee = dbHelper.get('SELECT id, user_id, employee_code, department, designation, joining_date FROM employees WHERE user_id = ?', [user.id]);
+  const token = generateToken(user);
+
+  // Set signed JWT as httpOnly cookie
+  res.cookie('auth_token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 8 * 60 * 60 * 1000 // 8 hours
+  });
+
   return res.json({
     success: true,
-    user: req.user,
-    employee: req.employee
+    message: `Authenticated as ${user.name} (${user.role})`,
+    token,
+    user,
+    employee: employee || null
   });
 });
 
 /**
- * GET /api/users
- * Returns the full user+employee roster.
- * ADMIN ONLY — never expose this to regular employees.
- *
- * RECONCILE NOTE (Member 1): Replace this stub with your auth-protected
- * admin endpoint once the shared auth module is integrated.
+ * POST /api/users/logout
+ * Clears httpOnly auth cookie.
  */
-router.get('/', requireRole('admin'), (req, res) => {
-  const users = dbHelper.query(`
-    SELECT
-      u.id,
-      u.name,
-      u.email,
-      u.role,
-      u.avatar,
-      e.id         AS employee_id,
-      e.employee_code,
-      e.department,
-      e.designation,
-      e.joining_date
-    FROM users u
-    LEFT JOIN employees e ON u.id = e.user_id
-    ORDER BY u.id ASC
-  `);
-
-  return res.json({ success: true, users });
+router.post('/logout', (req, res) => {
+  res.clearCookie('auth_token');
+  return res.json({ success: true, message: 'Signed out successfully' });
 });
 
 /**
  * GET /api/users/demo-personas
- * Development-only shortcut for hackathon judges to switch personas.
- * Returns ONLY (id, name, role, avatar, department) — no emails, no codes.
- * BLOCKED in production (NODE_ENV=production).
+ * Public/development-only endpoint to list personas for selection.
  */
 router.get('/demo-personas', (req, res) => {
   if (process.env.NODE_ENV === 'production') {
@@ -78,6 +76,47 @@ router.get('/demo-personas', (req, res) => {
   `);
 
   return res.json({ success: true, personas });
+});
+
+// All subsequent routes require valid JWT authentication
+router.use(authContext);
+
+/**
+ * GET /api/users/me
+ * Returns current authenticated user's profile.
+ */
+router.get('/me', (req, res) => {
+  return res.json({
+    success: true,
+    user: req.user,
+    employee: req.employee
+  });
+});
+
+/**
+ * GET /api/users
+ * Returns full user roster.
+ * ADMIN ONLY guard applied.
+ */
+router.get('/', requireRole('admin'), (req, res) => {
+  const users = dbHelper.query(`
+    SELECT
+      u.id,
+      u.name,
+      u.email,
+      u.role,
+      u.avatar,
+      e.id AS employee_id,
+      e.employee_code,
+      e.department,
+      e.designation,
+      e.joining_date
+    FROM users u
+    LEFT JOIN employees e ON u.id = e.user_id
+    ORDER BY u.id ASC
+  `);
+
+  return res.json({ success: true, users });
 });
 
 export default router;

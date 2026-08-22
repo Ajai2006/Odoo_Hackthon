@@ -56,10 +56,21 @@ router.post('/checkin', (req, res) => {
   }
 
   const now = new Date();
-  const dateStr = req.body.date || now.toISOString().split('T')[0];
-  
-  // Format check-in timestamp YYYY-MM-DD HH:MM:SS
-  const timeStr = req.body.timestamp || now.toTimeString().split(' ')[0];
+  let dateStr = now.toISOString().split('T')[0];
+  let timeStr = now.toTimeString().split(' ')[0];
+
+  // Client-supplied date/timestamp override is strictly restricted to admin debug mode
+  if (req.body.date || req.body.timestamp) {
+    const isDebugAdmin = req.query.debug === 'true' && req.user?.role === 'admin';
+    if (!isDebugAdmin) {
+      return res.status(403).json({
+        error: 'Forbidden: Timestamp spoofing is disabled. Custom dates/timestamps are restricted to admin debug mode.'
+      });
+    }
+    if (req.body.date) dateStr = req.body.date;
+    if (req.body.timestamp) timeStr = req.body.timestamp;
+  }
+
   const fullCheckIn = `${dateStr} ${timeStr}`;
 
   // Server-Side Validation: Reject duplicate check-in on the same day
@@ -134,10 +145,21 @@ router.post('/checkout', (req, res) => {
   }
 
   const now = new Date();
-  const dateStr = req.body.date || now.toISOString().split('T')[0];
-  
-  // Format check-out timestamp YYYY-MM-DD HH:MM:SS
-  const timeStr = req.body.timestamp || now.toTimeString().split(' ')[0];
+  let dateStr = now.toISOString().split('T')[0];
+  let timeStr = now.toTimeString().split(' ')[0];
+
+  // Client-supplied date/timestamp override is strictly restricted to admin debug mode
+  if (req.body.date || req.body.timestamp) {
+    const isDebugAdmin = req.query.debug === 'true' && req.user?.role === 'admin';
+    if (!isDebugAdmin) {
+      return res.status(403).json({
+        error: 'Forbidden: Timestamp spoofing is disabled. Custom dates/timestamps are restricted to admin debug mode.'
+      });
+    }
+    if (req.body.date) dateStr = req.body.date;
+    if (req.body.timestamp) timeStr = req.body.timestamp;
+  }
+
   const fullCheckOut = `${dateStr} ${timeStr}`;
 
   // Find today's check-in record

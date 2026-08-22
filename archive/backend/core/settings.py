@@ -1,14 +1,25 @@
 """
 Dayflow HRMS — Django settings
 """
+import os
 from pathlib import Path
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-dayflow-change-in-production-xK9#mP2@qL7'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+# Load environment variables from .env file if available
+env_file = BASE_DIR / '.env'
+if env_file.exists():
+    with open(env_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, val = line.split('=', 1)
+                os.environ.setdefault(key.strip(), val.strip())
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dayflow-change-in-production-xK9#mP2@qL7')
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -60,7 +71,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': r'C:\Users\barat\Documents\HRM\backend\db.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -105,5 +116,7 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
 ]
 CORS_ALLOW_CREDENTIALS = True
