@@ -49,7 +49,7 @@ Odoo_Hackthon/                      ← Repo root
 ## ⚡ Quick Start — Installation & Running
 
 ### Prerequisites
-- **Node.js** v18+ (v20 recommended)
+- **Node.js** v22+ (v22 LTS recommended for built-in `node:sqlite`)
 - **npm** v9+
 
 ### 1. Clone the Repository

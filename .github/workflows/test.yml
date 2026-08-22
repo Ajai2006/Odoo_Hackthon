@@ -8,12 +8,12 @@ on:
 
 jobs:
   test:
-    name: Node.js Unit & Integration Tests
+    name: Node.js Unit & Integration Tests (Node 22 LTS)
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [20.x, 22.x]
+        node-version: [22.x]
 
     steps:
       - name: Checkout repository
@@ -42,10 +42,14 @@ jobs:
           JWT_SECRET: ci_test_jwt_secret_dayflow_hrms_2026
           DB_PATH: dayflow.db
 
-      - name: Run full test suite (21 suites)
+      - name: Run server backend test suite (25 test suites)
         run: npm test
         working-directory: server
         env:
           NODE_ENV: test
           JWT_SECRET: ci_test_jwt_secret_dayflow_hrms_2026
           DB_PATH: dayflow.db
+
+      - name: Run client frontend Vitest suite (16 tests)
+        run: npm test
+        working-directory: client
