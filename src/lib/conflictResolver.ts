@@ -4,13 +4,13 @@ import { LeaveConflict, DepartmentCoverage, LeaveRequest } from '@/types';
 /**
  * Checks for overlapping leaves within the same department for a given date range.
  */
-export function getDepartmentConflicts(
+export async function getDepartmentConflicts(
   employeeId: number,
   startDate: string,
   endDate: string,
   excludeLeaveId?: number
-): { conflicts: LeaveConflict[]; coverage: DepartmentCoverage } {
-  const db = getDb();
+): Promise<{ conflicts: LeaveConflict[]; coverage: DepartmentCoverage }> {
+  const db = await getDb();
 
   // 1. Get employee department
   const employee = db.prepare('SELECT id, name, department FROM employees WHERE id = ?').get(employeeId) as {
@@ -84,7 +84,7 @@ export function getDepartmentConflicts(
   const totalDeptMembersRow = db.prepare(
     'SELECT count(*) as count FROM employees WHERE department = ?'
   ).get(employee.department) as { count: number };
-  const totalMembers = totalDeptMembersRow.count || 1;
+  const totalMembers = totalDeptMembersRow?.count || 1;
 
   // Unique employees on leave during this period (including this applicant)
   const uniqueConflictingEmployees = Array.from(new Set(conflicts.map((c) => c.employee_name)));
@@ -114,8 +114,8 @@ export function getDepartmentConflicts(
 /**
  * Enriches a leave request with real-time conflict metadata.
  */
-export function enrichLeaveWithConflicts(leave: LeaveRequest): LeaveRequest {
-  const { conflicts } = getDepartmentConflicts(
+export async function enrichLeaveWithConflicts(leave: LeaveRequest): Promise<LeaveRequest> {
+  const { conflicts } = await getDepartmentConflicts(
     leave.employee_id,
     leave.start_date,
     leave.end_date,

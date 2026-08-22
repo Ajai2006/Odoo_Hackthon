@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const department = searchParams.get('department');
     const search = searchParams.get('search');
 
-    const db = getDb();
+    const db = await getDb();
     let query = `
       SELECT 
         l.*,
@@ -50,15 +50,16 @@ export async function GET(req: NextRequest) {
 
     const rawLeaves = db.prepare(query).all(...params) as any[];
 
-    const leaves: LeaveRequest[] = rawLeaves.map((l) => {
+    const leaves: LeaveRequest[] = [];
+    for (const l of rawLeaves) {
       const sla = calculateSLA(l.created_at, l.status);
-      const { conflicts } = getDepartmentConflicts(l.employee_id, l.start_date, l.end_date, l.id);
-      return {
+      const { conflicts } = await getDepartmentConflicts(l.employee_id, l.start_date, l.end_date, l.id);
+      leaves.push({
         ...l,
         sla,
         conflicts,
-      };
-    });
+      });
+    }
 
     return NextResponse.json({
       success: true,

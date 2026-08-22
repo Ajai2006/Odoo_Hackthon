@@ -28,7 +28,7 @@ export async function PUT(
       );
     }
 
-    const db = getDb();
+    const db = await getDb();
 
     // Check if leave request exists
     const existing = db.prepare(`
@@ -70,7 +70,7 @@ export async function PUT(
 
     // On Approval: Wire up attendance sync hook immediately!
     if (body.status === 'approved') {
-      syncedAttendance = syncLeaveToAttendance({
+      syncedAttendance = await syncLeaveToAttendance({
         id: leaveId,
         employee_id: existing.employee_id,
         start_date: existing.start_date,
@@ -79,7 +79,7 @@ export async function PUT(
       });
     } else {
       // If rejected, clear any prior attendance sync
-      clearLeaveFromAttendance(leaveId);
+      await clearLeaveFromAttendance(leaveId);
     }
 
     // Fetch updated record with reviewer info

@@ -5,28 +5,21 @@ import { AttendanceStatus, LeaveRequest, AttendanceRecord } from '@/types';
  * Updates or inserts an attendance record for a specific employee and date.
  * Following Member 2 module contract.
  */
-export function updateAttendanceStatus(
+export async function updateAttendanceStatus(
   employeeId: number,
   date: string,
   status: AttendanceStatus = 'Leave',
   leaveRequestId: number | null = null,
   notes: string | null = null
-): AttendanceRecord {
-  const db = getDb();
+): Promise<AttendanceRecord> {
+  const db = await getDb();
   
   const defaultNotes = notes || (status === 'Leave' && leaveRequestId ? `Approved Leave (Ref #${leaveRequestId})` : `Updated to ${status}`);
 
-  const stmt = db.prepare(`
-    INSERT INTO attendance (employee_id, date, status, leave_request_id, notes, updated_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
-    ON CONFLICT(employee_id, date) DO UPDATE SET
-      status = excluded.status,
-      leave_request_id = excluded.leave_request_id,
-      notes = excluded.notes,
-      updated_at = datetime('now')
-  `);
-
-  stmt.run(employeeId, date, status, leaveRequestId, defaultNotes);
+  // Using INSERT OR REPLACE
+  db.prepare(
+    'INSERT OR REPLACE INTO attendance (employee_id, date, status, leave_request_id, notes, updated_at) VALUES (?, ?, ?, ?, ?, datetime(\'now\'))'
+  ).run(employeeId, date, status, leaveRequestId, defaultNotes);
 
   const updated = db.prepare(`
     SELECT a.*, e.name as employee_name, e.department
@@ -42,22 +35,20 @@ export function updateAttendanceStatus(
  * Synchronizes an approved leave request across all calendar dates in [start_date, end_date].
  * Ensures attendance calendar reflects "Leave" immediately.
  */
-export function syncLeaveToAttendance(leave: {
+export async function syncLeaveToAttendance(leave: {
   id: number;
   employee_id: number;
   start_date: string;
   end_date: string;
   leave_type: string;
-}): AttendanceRecord[] {
+}): Promise<AttendanceRecord[]> {
   const dates = getDatesBetween(leave.start_date, leave.end_date);
   const results: AttendanceRecord[] = [];
 
   for (const date of dates) {
     const dayOfWeek = new Date(date + 'T00:00:00Z').getUTCDay();
-    // Exclude weekends if desired, or mark all days of leave
-    // Typically business leave is on working days, but we log full leave span
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      const record = updateAttendanceStatus(
+      const record = await updateAttendanceStatus(
         leave.employee_id,
         date,
         'Leave',
@@ -74,8 +65,8 @@ export function syncLeaveToAttendance(leave: {
 /**
  * Reverts attendance records if an approved leave is ever revoked.
  */
-export function clearLeaveFromAttendance(leaveId: number) {
-  const db = getDb();
+export async function clearLeaveFromAttendance(leaveId: number) {
+  const db = await getDb();
   db.prepare(`
     DELETE FROM attendance WHERE leave_request_id = ?
   `).run(leaveId);
@@ -84,13 +75,13 @@ export function clearLeaveFromAttendance(leaveId: number) {
 /**
  * Retrieves attendance records for a specific employee or all employees in a date range.
  */
-export function getAttendanceRecords(filters: {
+export async function getAttendanceRecords(filters: {
   employee_id?: number;
   start_date?: string;
   end_date?: string;
   department?: string;
-}): AttendanceRecord[] {
-  const db = getDb();
+}): Promise<AttendanceRecord[]> {
+  const db = await getDb();
   let query = `
     SELECT a.*, e.name as employee_name, e.department
     FROM attendance a

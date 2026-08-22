@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const db = getDb();
+    const db = await getDb();
 
     // 1. Fetch employee
     const employee = db.prepare('SELECT * FROM employees WHERE id = ?').get(employeeId) as Employee | undefined;

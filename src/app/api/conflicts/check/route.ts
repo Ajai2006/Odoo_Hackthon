@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const result = getDepartmentConflicts(employeeId, startDate, endDate);
+    const result = await getDepartmentConflicts(employeeId, startDate, endDate);
 
     return NextResponse.json({
       success: true,

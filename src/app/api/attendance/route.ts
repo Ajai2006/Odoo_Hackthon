@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get('end_date') || undefined;
     const department = searchParams.get('department') || undefined;
 
-    const records = getAttendanceRecords({
+    const records = await getAttendanceRecords({
       employee_id: employeeId,
       start_date: startDate,
       end_date: endDate,
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const updated = updateAttendanceStatus(
+    const updated = await updateAttendanceStatus(
       employee_id,
       date,
       status as AttendanceStatus,

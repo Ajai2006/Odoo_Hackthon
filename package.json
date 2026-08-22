@@ -18,7 +18,11 @@
     "lucide-react": "^0.469.0",
     "next": "^15.1.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "typescript": "^5.7.2"
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/sql.js": "^1.4.11",
+    "sql.js": "^1.14.2",
+    "typescript": "5.7.2"
   }
 }

@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Employee, LeaveRequest, LeaveBalances } from '@/types';
-import PersonaSwitcher from '@/components/PersonaSwitcher';
-import LeaveBalanceCards from '@/components/LeaveBalanceCards';
-import LeaveApplyForm from '@/components/LeaveApplyForm';
-import LeaveHistoryTable from '@/components/LeaveHistoryTable';
-import AdminApprovalQueue from '@/components/AdminApprovalQueue';
-import AttendanceCalendar from '@/components/AttendanceCalendar';
-import ConflictRadar from '@/components/ConflictRadar';
+import { Employee, LeaveRequest, LeaveBalances } from '../types';
+import PersonaSwitcher from '../components/PersonaSwitcher';
+import LeaveBalanceCards from '../components/LeaveBalanceCards';
+import LeaveApplyForm from '../components/LeaveApplyForm';
+import LeaveHistoryTable from '../components/LeaveHistoryTable';
+import AdminApprovalQueue from '../components/AdminApprovalQueue';
+import AttendanceCalendar from '../components/AttendanceCalendar';
+import ConflictRadar from '../components/ConflictRadar';
 import {
   CalendarDays,
   ShieldAlert,

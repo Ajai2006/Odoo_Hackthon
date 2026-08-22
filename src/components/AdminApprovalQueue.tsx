@@ -43,7 +43,7 @@ export const AdminApprovalQueue: React.FC<AdminApprovalQueueProps> = ({
           </div>
           <div className="metric-info">
             <span className="metric-val">{urgentCount}</span>
-            <span className="metric-title">Urgent SLA (>3 Days)</span>
+            <span className="metric-title">Urgent SLA (&gt;3 Days)</span>
           </div>
         </div>
 

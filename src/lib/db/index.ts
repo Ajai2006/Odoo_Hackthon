@@ -1,40 +1,135 @@
-import Database from 'better-sqlite3';
+import initSqlJs from 'sql.js';
 import path from 'path';
 import fs from 'fs';
 
 const DB_PATH = path.join(process.cwd(), 'dayflow.db');
 
-let dbInstance: Database.Database | null = null;
+interface PreparedQuery {
+  all: (...params: any[]) => any[];
+  get: (...params: any[]) => any | undefined;
+  run: (...params: any[]) => { changes: number; lastInsertRowid: number };
+}
 
-export function getDb(): Database.Database {
-  if (!dbInstance) {
-    dbInstance = new Database(DB_PATH);
-    dbInstance.pragma('journal_mode = WAL');
-    dbInstance.pragma('foreign_keys = ON');
-    initSchema(dbInstance);
+export interface DbInterface {
+  exec: (sql: string) => void;
+  prepare: (sql: string) => PreparedQuery;
+}
+
+let dbInstance: any = null;
+let initPromise: Promise<any> | null = null;
+
+function saveDbToDisk() {
+  if (dbInstance) {
+    try {
+      const data = dbInstance.export();
+      const buffer = Buffer.from(data);
+      fs.writeFileSync(DB_PATH, buffer);
+    } catch (e) {
+      console.error('Failed to save SQLite DB to disk', e);
+    }
   }
+}
+
+async function initializeDatabase() {
+  if (dbInstance) return dbInstance;
+
+  const SQL = await initSqlJs({
+    locateFile: (file: string) => path.join(process.cwd(), 'node_modules/sql.js/dist', file),
+  });
+
+  if (fs.existsSync(DB_PATH)) {
+    const fileBuffer = fs.readFileSync(DB_PATH);
+    dbInstance = new SQL.Database(fileBuffer);
+  } else {
+    dbInstance = new SQL.Database();
+  }
+
+  initSchema();
   return dbInstance;
 }
 
-function initSchema(db: Database.Database) {
+export async function getDb(): Promise<DbInterface> {
+  if (!dbInstance) {
+    if (!initPromise) {
+      initPromise = initializeDatabase();
+    }
+    await initPromise;
+  }
+
+  return {
+    exec: (sql: string) => {
+      dbInstance.run(sql);
+      saveDbToDisk();
+    },
+    prepare: (sql: string): PreparedQuery => {
+      return {
+        all: (...params: any[]) => {
+          const stmt = dbInstance.prepare(sql);
+          if (params.length > 0) {
+            stmt.bind(params);
+          }
+          const results: any[] = [];
+          while (stmt.step()) {
+            results.push(stmt.getAsObject());
+          }
+          stmt.free();
+          return results;
+        },
+        get: (...params: any[]) => {
+          const stmt = dbInstance.prepare(sql);
+          if (params.length > 0) {
+            stmt.bind(params);
+          }
+          let result: any = undefined;
+          if (stmt.step()) {
+            result = stmt.getAsObject();
+          }
+          stmt.free();
+          return result;
+        },
+        run: (...params: any[]) => {
+          if (params.length > 0) {
+            dbInstance.run(sql, params);
+          } else {
+            dbInstance.run(sql);
+          }
+          saveDbToDisk();
+
+          // Get last insert row id
+          const idRow = dbInstance.exec('SELECT last_insert_rowid() as id');
+          const lastId = idRow.length > 0 && idRow[0].values.length > 0 ? (idRow[0].values[0][0] as number) : 0;
+
+          // Get changes
+          const changesRow = dbInstance.exec('SELECT changes() as count');
+          const changes = changesRow.length > 0 && changesRow[0].values.length > 0 ? (changesRow[0].values[0][0] as number) : 1;
+
+          return { changes, lastInsertRowid: lastId };
+        },
+      };
+    },
+  };
+}
+
+function initSchema() {
+  if (!dbInstance) return;
+
   const schemaPath = path.join(process.cwd(), 'src/lib/db/schema.sql');
   if (fs.existsSync(schemaPath)) {
     const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-    db.exec(schemaSql);
+    dbInstance.run(schemaSql);
   }
 
   // Check if seeding is required
-  const empCount = db.prepare('SELECT count(*) as count FROM employees').get() as { count: number };
-  if (empCount.count === 0) {
-    seedDatabase(db);
+  const res = dbInstance.exec('SELECT count(*) as count FROM employees');
+  const count = res.length > 0 && res[0].values.length > 0 ? (res[0].values[0][0] as number) : 0;
+  
+  if (count === 0) {
+    seedDatabase();
   }
 }
 
-function seedDatabase(db: Database.Database) {
-  const insertEmp = db.prepare(`
-    INSERT INTO employees (name, email, department, role, avatar_url, paid_balance, sick_balance, unpaid_balance)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+function seedDatabase() {
+  if (!dbInstance) return;
 
   const employees = [
     ['Sarah Chen', 'sarah.chen@dayflow.internal', 'Engineering', 'Senior Frontend Engineer', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150', 12.0, 8.0, 20.0],
@@ -46,104 +141,53 @@ function seedDatabase(db: Database.Database) {
   ];
 
   for (const emp of employees) {
-    insertEmp.run(...emp);
+    dbInstance.run(
+      'INSERT INTO employees (name, email, department, role, avatar_url, paid_balance, sick_balance, unpaid_balance) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      emp
+    );
   }
 
-  // Seed Leave Requests
-  const insertLeave = db.prepare(`
-    INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason, status, admin_comment, reviewed_by, reviewed_at, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?))
-  `);
-
   // 1. Approved Leave for Alex (Engineering) in the coming week (creates conflict baseline for Engineering)
-  insertLeave.run(
-    2, // Alex
-    'paid',
-    '2026-08-25',
-    '2026-08-28',
-    4.0,
-    'Annual family road trip and family reunion in the mountains.',
-    'approved',
-    'Approved. Ensure backend PRs are reviewed before leaving.',
-    6, // Marcus Vance
-    new Date().toISOString(),
-    '-5 days'
-  );
+  dbInstance.run(`
+    INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason, status, admin_comment, reviewed_by, reviewed_at, created_at)
+    VALUES (2, 'paid', '2026-08-25', '2026-08-28', 4.0, 'Annual family road trip and family reunion in the mountains.', 'approved', 'Approved. Ensure backend PRs are reviewed before leaving.', 6, datetime('now'), datetime('now', '-5 days'))
+  `);
 
   // 2. Pending Request from Sarah (Engineering) - Overlapping with Alex (conflict trigger)
   // Created 4 days ago -> triggers Urgency SLA Breach (>3 days)
-  insertLeave.run(
-    1, // Sarah
-    'paid',
-    '2026-08-26',
-    '2026-08-29',
-    4.0,
-    'Attending React Summit conference and taking personal rejuvenation days.',
-    'pending',
-    null,
-    null,
-    null,
-    '-4 days'
-  );
-
-  // 3. Pending Request from Maria (Design) - Created 1.5 days ago -> triggers Warning SLA (1-3 days)
-  insertLeave.run(
-    3, // Maria
-    'sick',
-    '2026-08-24',
-    '2026-08-25',
-    2.0,
-    'Scheduled minor dental surgery and recovery period recommended by dentist.',
-    'pending',
-    null,
-    null,
-    null,
-    '-36 hours'
-  );
-
-  // 4. Pending Request from James (Engineering) - Created 2 hours ago -> Normal SLA (<24h)
-  insertLeave.run(
-    4, // James
-    'paid',
-    '2026-09-01',
-    '2026-09-02',
-    2.0,
-    'Short weekend extension for personal family errands.',
-    'pending',
-    null,
-    null,
-    null,
-    '-2 hours'
-  );
-
-  // 5. Past Rejected Leave for Priya
-  insertLeave.run(
-    5, // Priya
-    'unpaid',
-    '2026-08-10',
-    '2026-08-12',
-    3.0,
-    'Extended vacation for friend wedding overseas.',
-    'rejected',
-    'Product launch blackout period during the week of Aug 10.',
-    6,
-    new Date().toISOString(),
-    '-14 days'
-  );
-
-  // Seed Attendance Records for past week + sync Alex's approved leave
-  const insertAtt = db.prepare(`
-    INSERT OR REPLACE INTO attendance (employee_id, date, status, leave_request_id, notes)
-    VALUES (?, ?, ?, ?, ?)
+  dbInstance.run(`
+    INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason, status, admin_comment, reviewed_by, reviewed_at, created_at)
+    VALUES (1, 'paid', '2026-08-26', '2026-08-29', 4.0, 'Attending React Summit conference and taking personal rejuvenation days.', 'pending', null, null, null, datetime('now', '-4 days'))
   `);
 
-  // Seed normal attendance for current month dates (Aug 15 - Aug 22)
+  // 3. Pending Request from Maria (Design) - Created 1.5 days ago -> triggers Warning SLA (1-3 days)
+  dbInstance.run(`
+    INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason, status, admin_comment, reviewed_by, reviewed_at, created_at)
+    VALUES (3, 'sick', '2026-08-24', '2026-08-25', 2.0, 'Scheduled minor dental surgery and recovery period recommended by dentist.', 'pending', null, null, null, datetime('now', '-36 hours'))
+  `);
+
+  // 4. Pending Request from James (Engineering) - Created 2 hours ago -> Normal SLA (<24h)
+  dbInstance.run(`
+    INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason, status, admin_comment, reviewed_by, reviewed_at, created_at)
+    VALUES (4, 'paid', '2026-09-01', '2026-09-02', 2.0, 'Short weekend extension for personal family errands.', 'pending', null, null, null, datetime('now', '-2 hours'))
+  `);
+
+  // 5. Past Rejected Leave for Priya
+  dbInstance.run(`
+    INSERT INTO leave_requests (employee_id, leave_type, start_date, end_date, total_days, reason, status, admin_comment, reviewed_by, reviewed_at, created_at)
+    VALUES (5, 'unpaid', '2026-08-10', '2026-08-12', 3.0, 'Extended vacation for friend wedding overseas.', 'rejected', 'Product launch blackout period during the week of Aug 10.', 6, datetime('now'), datetime('now', '-14 days'))
+  `);
+
+  // Seed normal attendance for past week
   for (let empId = 1; empId <= 6; empId++) {
     for (let day = 15; day <= 22; day++) {
       const dateStr = `2026-08-${day.toString().padStart(2, '0')}`;
       const dayOfWeek = new Date(dateStr).getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Weekdays only
-        insertAtt.run(empId, dateStr, 'Present', null, 'Regular check-in');
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        dbInstance.run(
+          'INSERT OR REPLACE INTO attendance (employee_id, date, status, notes) VALUES (?, ?, ?, ?)',
+          [empId, dateStr, 'Present', 'Regular check-in']
+        );
       }
     }
   }
@@ -151,6 +195,11 @@ function seedDatabase(db: Database.Database) {
   // Alex's approved leave synced to attendance (Aug 25 to Aug 28)
   for (let day = 25; day <= 28; day++) {
     const dateStr = `2026-08-${day.toString().padStart(2, '0')}`;
-    insertAtt.run(2, dateStr, 'Leave', 1, 'Approved Paid Leave (#1)');
+    dbInstance.run(
+      'INSERT OR REPLACE INTO attendance (employee_id, date, status, leave_request_id, notes) VALUES (?, ?, ?, ?, ?)',
+      [2, dateStr, 'Leave', 1, 'Approved Paid Leave (#1)']
+    );
   }
+
+  saveDbToDisk();
 }

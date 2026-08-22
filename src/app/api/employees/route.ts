@@ -4,7 +4,7 @@ import { Employee } from '@/types';
 
 export async function GET() {
   try {
-    const db = getDb();
+    const db = await getDb();
     const employees = db.prepare('SELECT * FROM employees ORDER BY id ASC').all() as Employee[];
 
     return NextResponse.json({

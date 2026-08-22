@@ -31,21 +31,20 @@ export function calculateWorkingDays(startDateStr: string, endDateStr: string): 
     curr.setUTCDate(curr.getUTCDate() + 1);
   }
 
-  // If start and end are weekend, minimum 1 or count
   return count === 0 ? 1 : count;
 }
 
 /**
  * Validates leave application payload server-side.
  */
-export function validateLeaveApplication(payload: Partial<ApplyLeavePayload>): ValidationResult {
+export async function validateLeaveApplication(payload: Partial<ApplyLeavePayload>): Promise<ValidationResult> {
   const errors: Record<string, string> = {};
 
   // 1. Employee ID validation
   if (!payload.employee_id || typeof payload.employee_id !== 'number' || payload.employee_id <= 0) {
     errors.employee_id = 'Valid employee ID is required.';
   } else {
-    const db = getDb();
+    const db = await getDb();
     const employee = db.prepare('SELECT * FROM employees WHERE id = ?').get(payload.employee_id);
     if (!employee) {
       errors.employee_id = 'Employee not found in database.';
@@ -95,7 +94,7 @@ export function validateLeaveApplication(payload: Partial<ApplyLeavePayload>): V
 
   // 5. Check if employee already has a pending or approved leave overlapping with this range
   if (payload.employee_id && payload.start_date && payload.end_date && Object.keys(errors).length === 0) {
-    const db = getDb();
+    const db = await getDb();
     const overlap = db.prepare(`
       SELECT id, status, start_date, end_date FROM leave_requests
       WHERE employee_id = ?

@@ -6,7 +6,7 @@ import { LeaveRequest } from '@/types';
 
 export async function GET(req: NextRequest) {
   try {
-    const db = getDb();
+    const db = await getDb();
     
     const rawLeaves = db.prepare(`
       SELECT 
@@ -21,15 +21,16 @@ export async function GET(req: NextRequest) {
       ORDER BY l.created_at ASC
     `).all() as any[];
 
-    const leaves: LeaveRequest[] = rawLeaves.map((l) => {
+    const leaves: LeaveRequest[] = [];
+    for (const l of rawLeaves) {
       const sla = calculateSLA(l.created_at, l.status);
-      const { conflicts } = getDepartmentConflicts(l.employee_id, l.start_date, l.end_date, l.id);
-      return {
+      const { conflicts } = await getDepartmentConflicts(l.employee_id, l.start_date, l.end_date, l.id);
+      leaves.push({
         ...l,
         sla,
         conflicts,
-      };
-    });
+      });
+    }
 
     // Sort by SLA urgency: 'urgent' (breached) first, then 'warning', then 'normal'
     const urgencyOrder = { urgent: 0, warning: 1, normal: 2 };

@@ -97,7 +97,7 @@ export interface ReviewLeavePayload {
 }
 
 export interface LeaveBalances {
-  paid: { total: number; used: number; remaining: number };
-  sick: { total: number; used: number; remaining: number };
-  unpaid: { total: number; used: number; remaining: number };
+  paid: { total: number; used: number; remaining: number; pending: number };
+  sick: { total: number; used: number; remaining: number; pending: number };
+  unpaid: { total: number; used: number; remaining: number; pending: number };
 }

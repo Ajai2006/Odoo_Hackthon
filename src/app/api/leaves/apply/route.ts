@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as ApplyLeavePayload;
 
     // 1. Server-side validation on every field
-    const validation = validateLeaveApplication(body);
+    const validation = await validateLeaveApplication(body);
     if (!validation.isValid) {
       return NextResponse.json(
         {
@@ -22,11 +22,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = getDb();
+    const db = await getDb();
     const totalDays = validation.totalDays || 1;
 
     // 2. Conflict Analysis
-    const conflictReport = getDepartmentConflicts(body.employee_id, body.start_date, body.end_date);
+    const conflictReport = await getDepartmentConflicts(body.employee_id, body.start_date, body.end_date);
 
     // 3. Database Insertion
     const stmt = db.prepare(`
@@ -52,10 +52,10 @@ export async function POST(req: NextRequest) {
       body.reason.trim()
     );
 
-    const newId = result.lastInsertRowid;
+    const newId = Number(result.lastInsertRowid);
 
     // 4. Fetch the inserted record with joined employee info
-    const createdLeave = db.prepare(`
+    let createdLeave = db.prepare(`
       SELECT 
         l.*,
         e.name as employee_name,
@@ -65,7 +65,23 @@ export async function POST(req: NextRequest) {
       FROM leave_requests l
       JOIN employees e ON l.employee_id = e.id
       WHERE l.id = ?
-    `).get(newId) as LeaveRequest;
+    `).get(newId) as LeaveRequest | undefined;
+
+    if (!createdLeave) {
+      createdLeave = db.prepare(`
+        SELECT 
+          l.*,
+          e.name as employee_name,
+          e.email as employee_email,
+          e.department,
+          e.avatar_url as employee_avatar
+        FROM leave_requests l
+        JOIN employees e ON l.employee_id = e.id
+        WHERE l.employee_id = ?
+        ORDER BY l.id DESC
+        LIMIT 1
+      `).get(body.employee_id) as LeaveRequest;
+    }
 
     // Enrich with SLA and conflicts
     createdLeave.sla = calculateSLA(createdLeave.created_at, createdLeave.status);
