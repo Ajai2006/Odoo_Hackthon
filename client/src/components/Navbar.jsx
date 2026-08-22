@@ -46,17 +46,31 @@ export function AppShell({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen]             = useState(false);
   const [dropdownOpen, setDropdownOpen]         = useState(false);
+  const [notifOpen, setNotifOpen]               = useState(false);
+  const [unreadNotifs, setUnreadNotifs]         = useState(4);
+  const [searchQuery, setSearchQuery]           = useState('');
   const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
 
   const role = currentUser?.role || 'employee';
   const department = currentUser?.employee?.department || 'Staff';
   const navItems = GET_NAV_ITEMS(role, department);
 
-  /* Close dropdown on outside click */
+  const SAMPLE_NOTIFS = [
+    { id: 1, type: 'checkin', text: 'Alex Chen checked in for today\'s shift', sub: '09:15 AM · On Time', time: '10m ago', icon: Clock, color: '#10b981' },
+    { id: 2, type: 'late', text: 'David Kim checked in (+18m Late)', sub: '09:48 AM · Late Arrival', time: '45m ago', icon: Shield, color: '#ef4444' },
+    { id: 3, type: 'leave', text: 'Elena Rostova submitted a Paid PTO request', sub: 'Aug 25 – Aug 28 (3 days)', time: '2h ago', icon: CalendarDays, color: '#0284c7' },
+    { id: 4, type: 'risk', text: 'Workforce Risk Engine Alert', sub: 'Design team flagged for Monday absence spike', time: '3h ago', icon: ShieldCheck, color: '#f59e0b' }
+  ];
+
+  /* Close dropdowns on outside click */
   useEffect(() => {
     function handler(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
       }
     }
     document.addEventListener('mousedown', handler);
@@ -189,11 +203,51 @@ export function AppShell({
               <input type="search" placeholder="Search shifts or staff…" aria-label="Global search" />
             </div>
 
-            {/* Notifications */}
-            <button className="topbar-icon-btn" aria-label="Notifications">
-              <Bell size={18} />
-              <span className="notif-dot" aria-hidden="true" />
-            </button>
+            {/* Interactive Notifications Drawer */}
+            <div className="relative" ref={notifRef}>
+              <button 
+                className="topbar-icon-btn" 
+                aria-label="Notifications"
+                onClick={() => setNotifOpen(p => !p)}
+              >
+                <Bell size={18} />
+                {unreadNotifs > 0 && <span className="notif-dot" aria-hidden="true" />}
+              </button>
+
+              {notifOpen && (
+                <div className="dropdown-panel" style={{ width: '320px', right: 0, padding: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Live Activity &amp; HR Alerts
+                    </div>
+                    <button 
+                      onClick={() => setUnreadNotifs(0)}
+                      style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+
+                  <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                    {SAMPLE_NOTIFS.map(n => {
+                      const IconComp = n.icon;
+                      return (
+                        <div key={n.id} style={{ display: 'flex', gap: '0.65rem', padding: '0.65rem 0.5rem', borderBottom: '1px solid var(--border-color)', fontSize: '12px' }}>
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${n.color}15`, color: n.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <IconComp size={15} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{n.text}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>{n.sub}</div>
+                            <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '2px' }}>{n.time}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Avatar / Account Dropdown */}
             <div className="relative" ref={dropdownRef}>
