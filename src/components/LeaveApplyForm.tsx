@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { LeaveType, LeaveBalances, LeaveConflict, DepartmentCoverage } from '@/types';
-import { Calendar, AlertCircle, CheckCircle2, ShieldAlert, Sparkles, Send } from 'lucide-react';
+import { LeaveType, LeaveBalances, LeaveConflict, DepartmentCoverage } from '../types';
+import { CalendarHeart, Stethoscope, CalendarMinus, AlertCircle, CheckCircle2, ShieldAlert, Sparkles, Send } from 'lucide-react';
 
 interface LeaveApplyFormProps {
   employeeId: number;
@@ -21,15 +21,18 @@ export const LeaveApplyForm: React.FC<LeaveApplyFormProps> = ({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
-  const [loading, setLoading] = useState(false);
+  
+  // Field touched states for onBlur validation
+  const [touched, setTouched] = useState<{ startDate?: boolean; endDate?: boolean; reason?: boolean }>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const [loading, setLoading] = useState(false);
   const [conflictData, setConflictData] = useState<{
     conflicts: LeaveConflict[];
     coverage: DepartmentCoverage;
   } | null>(null);
   const [checkingConflicts, setCheckingConflicts] = useState(false);
 
-  // Set default min date to today YYYY-MM-DD
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Calculate live working days
@@ -48,6 +51,44 @@ export const LeaveApplyForm: React.FC<LeaveApplyFormProps> = ({
   };
 
   const workingDays = calculateDays();
+
+  // Validate on field change or blur
+  const validateField = (field: 'startDate' | 'endDate' | 'reason', val?: string) => {
+    const newErrors = { ...errors };
+    const curStart = field === 'startDate' ? val : startDate;
+    const curEnd = field === 'endDate' ? val : endDate;
+    const curReason = field === 'reason' ? val : reason;
+
+    if (field === 'startDate') {
+      if (!curStart) {
+        newErrors.start_date = 'Start date is required.';
+      } else if (curStart < todayStr) {
+        newErrors.start_date = `Start date cannot be in the past (on or after ${todayStr}).`;
+      } else {
+        delete newErrors.start_date;
+      }
+    }
+
+    if (field === 'endDate') {
+      if (!curEnd) {
+        newErrors.end_date = 'End date is required.';
+      } else if (curStart && curEnd < curStart) {
+        newErrors.end_date = 'End date cannot be earlier than start date.';
+      } else {
+        delete newErrors.end_date;
+      }
+    }
+
+    if (field === 'reason') {
+      if (!curReason || curReason.trim().length < 10) {
+        newErrors.reason = 'Reason must be at least 10 characters long.';
+      } else {
+        delete newErrors.reason;
+      }
+    }
+
+    setErrors(newErrors);
+  };
 
   // Real-time conflict preview when dates change
   useEffect(() => {
@@ -77,14 +118,16 @@ export const LeaveApplyForm: React.FC<LeaveApplyFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors({});
+    setTouched({ startDate: true, endDate: true, reason: true });
 
-    // Client-side quick checks
+    // Validate all fields
     const newErrors: Record<string, string> = {};
     if (!startDate) newErrors.start_date = 'Start date is required.';
+    else if (startDate < todayStr) newErrors.start_date = 'Start date cannot be in the past.';
+    
     if (!endDate) newErrors.end_date = 'End date is required.';
-    if (startDate && startDate < todayStr) newErrors.start_date = 'Start date cannot be in the past.';
-    if (startDate && endDate && endDate < startDate) newErrors.end_date = 'End date cannot be earlier than start date.';
+    else if (startDate && endDate < startDate) newErrors.end_date = 'End date cannot be earlier than start date.';
+    
     if (!reason || reason.trim().length < 10) newErrors.reason = 'Reason must be at least 10 characters long.';
 
     if (Object.keys(newErrors).length > 0) {
@@ -120,6 +163,8 @@ export const LeaveApplyForm: React.FC<LeaveApplyFormProps> = ({
         setStartDate('');
         setEndDate('');
         setReason('');
+        setTouched({});
+        setErrors({});
         setConflictData(null);
         onSuccess();
       }
@@ -130,187 +175,223 @@ export const LeaveApplyForm: React.FC<LeaveApplyFormProps> = ({
     }
   };
 
-  const getBalanceBadge = (type: LeaveType) => {
+  const getQuotaLabel = (type: LeaveType) => {
     if (!balances) return null;
-    const b = balances[type];
-    return (
-      <span className="balance-pill">
-        {b.remaining}d left
-      </span>
-    );
+    return `${balances[type].remaining}d left`;
   };
 
   return (
-    <div className="card leave-form-card">
-      <div className="card-header">
-        <div className="card-title-group">
-          <div className="icon-wrapper icon-primary">
-            <Calendar size={20} />
-          </div>
-          <div>
-            <h3 className="card-title">Apply for Leave</h3>
-            <p className="card-subtitle">Submit a leave request for managerial review</p>
-          </div>
+    <div className="card-panel">
+      <div className="card-panel-header">
+        <div>
+          <h3>Apply for Leave</h3>
+          <p className="text-caption">Submit a leave request for managerial approval</p>
         </div>
       </div>
 
-      {errors.general && (
-        <div className="alert-banner alert-error">
-          <AlertCircle size={18} />
-          <span>{errors.general}</span>
-        </div>
-      )}
+      <div className="card-panel-body">
+        {errors.general && (
+          <div className="inline-field-error" style={{ marginBottom: '16px' }}>
+            <AlertCircle size={16} />
+            <span>{errors.general}</span>
+          </div>
+        )}
 
-      {errors.conflict && (
-        <div className="alert-banner alert-error">
-          <AlertCircle size={18} />
-          <span>{errors.conflict}</span>
-        </div>
-      )}
+        {errors.conflict && (
+          <div className="inline-field-error" style={{ marginBottom: '16px' }}>
+            <AlertCircle size={16} />
+            <span>{errors.conflict}</span>
+          </div>
+        )}
 
-      <form onSubmit={handleSubmit} className="leave-form">
-        {/* Leave Type Selector */}
-        <div className="form-group">
-          <label className="form-label">Leave Type</label>
-          <div className="leave-type-grid">
-            {(['paid', 'sick', 'unpaid'] as LeaveType[]).map((type) => (
+        <form onSubmit={handleSubmit} noValidate>
+          {/* Segmented Control for Leave Type */}
+          <div className="form-field">
+            <label className="field-label">Leave Type</label>
+            <div className="segmented-control">
               <button
                 type="button"
-                key={type}
-                className={`leave-type-btn ${leaveType === type ? 'active' : ''}`}
-                onClick={() => setLeaveType(type)}
+                className={`segment-btn ${leaveType === 'paid' ? 'active' : ''}`}
+                onClick={() => setLeaveType('paid')}
               >
-                <span className="type-name">{type.toUpperCase()}</span>
-                {getBalanceBadge(type)}
+                <div className="flex-align-center gap-1">
+                  <CalendarHeart size={14} />
+                  <span>Paid</span>
+                </div>
+                <span className="segment-quota">{getQuotaLabel('paid')}</span>
               </button>
-            ))}
-          </div>
-          {errors.leave_type && <span className="field-error">{errors.leave_type}</span>}
-        </div>
 
-        {/* Date Range Picker */}
-        <div className="form-row">
-          <div className="form-group flex-1">
-            <label className="form-label" htmlFor="startDate">Start Date</label>
-            <input
-              id="startDate"
-              type="date"
-              className={`form-input ${errors.start_date ? 'input-error' : ''}`}
-              min={todayStr}
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-            />
-            {errors.start_date && <span className="field-error">{errors.start_date}</span>}
-          </div>
+              <button
+                type="button"
+                className={`segment-btn ${leaveType === 'sick' ? 'active' : ''}`}
+                onClick={() => setLeaveType('sick')}
+              >
+                <div className="flex-align-center gap-1">
+                  <Stethoscope size={14} />
+                  <span>Sick</span>
+                </div>
+                <span className="segment-quota">{getQuotaLabel('sick')}</span>
+              </button>
 
-          <div className="form-group flex-1">
-            <label className="form-label" htmlFor="endDate">End Date</label>
-            <input
-              id="endDate"
-              type="date"
-              className={`form-input ${errors.end_date ? 'input-error' : ''}`}
-              min={startDate || todayStr}
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              required
-            />
-            {errors.end_date && <span className="field-error">{errors.end_date}</span>}
-          </div>
-        </div>
-
-        {/* Days Calculation Badge */}
-        {workingDays > 0 && (
-          <div className="calculated-days-pill">
-            <span>Duration:</span>
-            <strong>{workingDays} {workingDays === 1 ? 'Working Day' : 'Working Days'}</strong>
-          </div>
-        )}
-
-        {/* Smart Conflict Resolver Live Radar */}
-        {checkingConflicts && (
-          <div className="conflict-box conflict-loading">
-            <Sparkles size={16} className="animate-spin text-accent" />
-            <span>Evaluating team coverage & schedule overlaps...</span>
-          </div>
-        )}
-
-        {!checkingConflicts && conflictData && conflictData.conflicts.length > 0 && (
-          <div className="conflict-box conflict-warning">
-            <div className="conflict-header">
-              <ShieldAlert size={18} className="text-warning" />
-              <strong>Smart Conflict Radar: Overlap in {department} Team</strong>
-            </div>
-            <p className="conflict-desc">
-              {conflictData.conflicts.length === 1
-                ? `${conflictData.conflicts[0].employee_name} has an active ${conflictData.conflicts[0].status} leave during this period (${conflictData.conflicts[0].start_date} to ${conflictData.conflicts[0].end_date}).`
-                : `${conflictData.conflicts.length} team members are already on leave during this timeframe.`}
-            </p>
-            <div className="conflict-coverage-bar">
-              <span className="coverage-label">
-                Department Coverage: <strong>{conflictData.coverage.coverage_percentage}%</strong> ({conflictData.coverage.total_members - conflictData.coverage.members_on_leave}/{conflictData.coverage.total_members} staff active)
-              </span>
-              <div className="progress-track">
-                <div
-                  className={`progress-fill ${
-                    conflictData.coverage.warning_level === 'critical'
-                      ? 'fill-red'
-                      : 'fill-amber'
-                  }`}
-                  style={{ width: `${conflictData.coverage.coverage_percentage}%` }}
-                />
-              </div>
+              <button
+                type="button"
+                className={`segment-btn ${leaveType === 'unpaid' ? 'active' : ''}`}
+                onClick={() => setLeaveType('unpaid')}
+              >
+                <div className="flex-align-center gap-1">
+                  <CalendarMinus size={14} />
+                  <span>Unpaid</span>
+                </div>
+                <span className="segment-quota">{getQuotaLabel('unpaid')}</span>
+              </button>
             </div>
           </div>
-        )}
 
-        {!checkingConflicts && conflictData && conflictData.conflicts.length === 0 && startDate && endDate && (
-          <div className="conflict-box conflict-safe">
-            <CheckCircle2 size={16} className="text-emerald" />
-            <span>Optimal timing! No team overlaps detected in {department}. Staffing at 100%.</span>
+          {/* Date Range Inputs */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="form-field">
+              <label className="field-label" htmlFor="applyStartDate">Start Date</label>
+              <input
+                id="applyStartDate"
+                type="date"
+                className={`form-input ${touched.startDate && errors.start_date ? 'input-has-error' : ''}`}
+                min={todayStr}
+                value={startDate}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  if (touched.startDate) validateField('startDate', e.target.value);
+                }}
+                onBlur={(e) => {
+                  setTouched((prev) => ({ ...prev, startDate: true }));
+                  validateField('startDate', e.target.value);
+                }}
+                required
+              />
+              {touched.startDate && errors.start_date && (
+                <div className="inline-field-error">
+                  <AlertCircle size={13} />
+                  <span>{errors.start_date}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="form-field">
+              <label className="field-label" htmlFor="applyEndDate">End Date</label>
+              <input
+                id="applyEndDate"
+                type="date"
+                className={`form-input ${touched.endDate && errors.end_date ? 'input-has-error' : ''}`}
+                min={startDate || todayStr}
+                value={endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  if (touched.endDate) validateField('endDate', e.target.value);
+                }}
+                onBlur={(e) => {
+                  setTouched((prev) => ({ ...prev, endDate: true }));
+                  validateField('endDate', e.target.value);
+                }}
+                required
+              />
+              {touched.endDate && errors.end_date && (
+                <div className="inline-field-error">
+                  <AlertCircle size={13} />
+                  <span>{errors.end_date}</span>
+                </div>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Reason Textarea */}
-        <div className="form-group">
-          <div className="label-with-counter">
-            <label className="form-label" htmlFor="leaveReason">Reason for Leave</label>
-            <span
-              className={`char-counter ${
-                reason.trim().length >= 10 ? 'counter-valid' : 'counter-invalid'
-              }`}
-            >
-              {reason.trim().length} / min 10 chars
-            </span>
-          </div>
-          <textarea
-            id="leaveReason"
-            rows={3}
-            className={`form-textarea ${errors.reason ? 'input-error' : ''}`}
-            placeholder="Please explain the purpose of your leave (minimum 10 characters)..."
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            required
-          />
-          {errors.reason && <span className="field-error">{errors.reason}</span>}
-        </div>
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={loading || reason.trim().length < 10 || workingDays === 0}
-          className="btn btn-primary btn-block"
-        >
-          {loading ? (
-            <span>Submitting Application...</span>
-          ) : (
-            <>
-              <Send size={16} />
-              <span>Submit Leave Request</span>
-            </>
+          {/* Live Calculated Days Badge */}
+          {workingDays > 0 && (
+            <div className="days-calc-banner">
+              <span>Duration Calculated:</span>
+              <strong className="tabular-nums">
+                {workingDays} {workingDays === 1 ? 'day selected' : 'days selected'} (excluding weekends)
+              </strong>
+            </div>
           )}
-        </button>
-      </form>
+
+          {/* Smart Conflict Resolver Inline Warning */}
+          {checkingConflicts && (
+            <div className="text-caption text-secondary" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Sparkles size={14} className="text-primary" />
+              <span>Checking team coverage schedule...</span>
+            </div>
+          )}
+
+          {!checkingConflicts && conflictData && conflictData.conflicts.length > 0 && (
+            <div style={{
+              backgroundColor: 'var(--warning-bg)',
+              border: '1px solid var(--warning-border)',
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-input)',
+              marginBottom: '16px',
+              fontSize: '13px',
+              color: '#B45309'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, marginBottom: '2px' }}>
+                <ShieldAlert size={15} />
+                <span>Team Schedule Notice ({department})</span>
+              </div>
+              <p style={{ fontSize: '12px' }}>
+                {conflictData.conflicts.length === 1
+                  ? `${conflictData.conflicts[0].employee_name} has active leave during these dates.`
+                  : `${conflictData.conflicts.length} team members are already on leave during this timeframe.`}
+                {' '}Department coverage: <strong>{conflictData.coverage.coverage_percentage}%</strong>.
+              </p>
+            </div>
+          )}
+
+          {/* Remarks Textarea */}
+          <div className="form-field">
+            <div className="form-label-row">
+              <label className="field-label" htmlFor="applyReason">Remarks / Reason</label>
+              <span className={`char-count-tag tabular-nums ${reason.trim().length >= 10 ? 'count-valid' : 'count-invalid'}`}>
+                {reason.trim().length} / min 10 chars
+              </span>
+            </div>
+            <textarea
+              id="applyReason"
+              rows={3}
+              className={`form-textarea ${touched.reason && errors.reason ? 'input-has-error' : ''}`}
+              placeholder="State the purpose of your leave (minimum 10 characters)..."
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value);
+                if (touched.reason) validateField('reason', e.target.value);
+              }}
+              onBlur={(e) => {
+                setTouched((prev) => ({ ...prev, reason: true }));
+                validateField('reason', e.target.value);
+              }}
+              required
+            />
+            {touched.reason && errors.reason && (
+              <div className="inline-field-error">
+                <AlertCircle size={13} />
+                <span>{errors.reason}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading || reason.trim().length < 10 || workingDays === 0}
+            className="btn btn-primary btn-block"
+          >
+            {loading ? (
+              <span>Submitting Request...</span>
+            ) : (
+              <>
+                <Send size={15} />
+                <span>Submit Leave Request</span>
+              </>
+            )}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

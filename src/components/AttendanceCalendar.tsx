@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AttendanceRecord, Employee } from '@/types';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, XCircle, AlertCircle, Info, Filter } from 'lucide-react';
+import { AttendanceRecord, Employee } from '../types';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, User, Clock } from 'lucide-react';
 
 interface AttendanceCalendarProps {
   currentEmployee?: Employee;
@@ -13,7 +13,6 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
 }) => {
   const [currentMonth, setCurrentMonth] = useState<number>(7); // 7 is August (0-indexed)
   const [currentYear, setCurrentYear] = useState<number>(2026);
-  const [selectedDept, setSelectedDept] = useState<string>('all');
   const [selectedEmpId, setSelectedEmpId] = useState<number | 'all'>(currentEmployee?.id || 'all');
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -39,9 +38,6 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
       if (selectedEmpId !== 'all') {
         url += `&employee_id=${selectedEmpId}`;
       }
-      if (selectedDept !== 'all') {
-        url += `&department=${selectedDept}`;
-      }
 
       const res = await fetch(url);
       const data = await res.json();
@@ -57,7 +53,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
 
   useEffect(() => {
     fetchAttendance();
-  }, [currentMonth, currentYear, selectedEmpId, selectedDept]);
+  }, [currentMonth, currentYear, selectedEmpId]);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -82,11 +78,9 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
     }
   };
 
-  // Generate calendar grid
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 is Sunday
+  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
 
-  // Map records by date string YYYY-MM-DD
   const recordsByDate: Record<string, AttendanceRecord[]> = {};
   for (const r of records) {
     if (!recordsByDate[r.date]) {
@@ -96,29 +90,27 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   }
 
   return (
-    <div className="card calendar-card">
-      <div className="card-header flex-between flex-wrap gap-4">
-        <div className="card-title-group">
-          <div className="icon-wrapper icon-primary">
-            <CalendarIcon size={20} />
+    <div className="card-panel">
+      <div className="card-panel-header">
+        <div className="flex-align-center gap-2">
+          <div className="brand-icon-box" style={{ width: '28px', height: '28px' }}>
+            <CalendarIcon size={15} />
           </div>
           <div>
-            <h3 className="card-title">Live Attendance & Leave Calendar</h3>
-            <p className="card-subtitle">
-              Instant sync with Member 2 attendance module — approved leaves automatically reflect below
-            </p>
+            <h3>Attendance & Leave Calendar</h3>
+            <p className="text-caption">Auto-synced with Member 2 attendance module — approved leaves reflect live</p>
           </div>
         </div>
 
-        {/* Filters and Navigation */}
-        <div className="calendar-controls-group">
-          {/* Employee Filter */}
+        {/* Controls */}
+        <div className="flex-align-center gap-3">
           <select
-            className="form-select-sm"
+            className="form-input"
+            style={{ width: '200px', height: '34px', padding: '4px 8px', fontSize: '13px' }}
             value={selectedEmpId}
             onChange={(e) => setSelectedEmpId(e.target.value === 'all' ? 'all' : parseInt(e.target.value, 10))}
           >
-            <option value="all">All Employees</option>
+            <option value="all">All Employees (Team Matrix)</option>
             {allEmployees.map((emp) => (
               <option key={emp.id} value={emp.id}>
                 {emp.name} ({emp.department})
@@ -127,54 +119,46 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
           </select>
 
           {/* Month Stepper */}
-          <div className="month-stepper">
-            <button className="stepper-btn" onClick={handlePrevMonth} title="Previous Month">
-              <ChevronLeft size={16} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border)', borderRadius: 'var(--radius-input)', padding: '2px 6px', backgroundColor: 'var(--bg-surface)' }}>
+            <button className="btn btn-sm" style={{ border: 'none', padding: '2px', boxShadow: 'none' }} onClick={handlePrevMonth}>
+              <ChevronLeft size={14} />
             </button>
-            <span className="month-label">
+            <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '110px', textAlign: 'center' }}>
               {monthNames[currentMonth]} {currentYear}
             </span>
-            <button className="stepper-btn" onClick={handleNextMonth} title="Next Month">
-              <ChevronRight size={16} />
+            <button className="btn btn-sm" style={{ border: 'none', padding: '2px', boxShadow: 'none' }} onClick={handleNextMonth}>
+              <ChevronRight size={14} />
             </button>
           </div>
         </div>
       </div>
 
       {/* Legend Bar */}
-      <div className="calendar-legend-bar">
-        <div className="legend-item">
-          <span className="legend-dot dot-present" />
+      <div style={{ padding: '8px 24px', backgroundColor: 'var(--bg-zebra)', borderBottom: '1px solid var(--border)', display: 'flex', gap: '20px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+        <div className="flex-align-center gap-1">
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--success)' }} />
           <span>Present</span>
         </div>
-        <div className="legend-item">
-          <span className="legend-dot dot-leave" />
+        <div className="flex-align-center gap-1">
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--primary-700)' }} />
           <span>On Leave (Auto-Synced)</span>
         </div>
-        <div className="legend-item">
-          <span className="legend-dot dot-absent" />
-          <span>Absent</span>
-        </div>
-        <div className="legend-item">
-          <span className="legend-dot dot-weekend" />
+        <div className="flex-align-center gap-1">
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--text-muted)' }} />
           <span>Weekend</span>
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="calendar-grid-container">
-        {/* Day Headers */}
-        <div className="calendar-grid-header">
+      <div style={{ padding: '24px' }}>
+        {/* Calendar Grid */}
+        <div className="calendar-matrix">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-            <div key={d} className="calendar-day-head">{d}</div>
+            <div key={d} className="matrix-header-cell">{d}</div>
           ))}
-        </div>
 
-        {/* Day Cells */}
-        <div className="calendar-grid-body">
-          {/* Blank cells for offset */}
+          {/* Blank cells */}
           {Array.from({ length: firstDayIndex }).map((_, i) => (
-            <div key={`empty-${i}`} className="calendar-cell cell-empty" />
+            <div key={`empty-${i}`} className="matrix-day-cell matrix-day-weekend" />
           ))}
 
           {/* Actual days */}
@@ -185,42 +169,34 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
             const dayRecords = recordsByDate[dateStr] || [];
 
-            const hasLeave = dayRecords.some((r) => r.status === 'Leave');
-            const hasPresent = dayRecords.some((r) => r.status === 'Present');
-            const hasAbsent = dayRecords.some((r) => r.status === 'Absent');
-
             return (
               <div
                 key={dateStr}
-                className={`calendar-cell ${isWeekend ? 'cell-weekend' : ''} ${
-                  hasLeave ? 'cell-has-leave' : ''
-                }`}
+                className={`matrix-day-cell ${isWeekend ? 'matrix-day-weekend' : ''}`}
+                style={{ cursor: dayRecords.length > 0 ? 'pointer' : 'default' }}
                 onClick={() => dayRecords.length > 0 && setSelectedDayDetails({ date: dateStr, records: dayRecords })}
               >
-                <div className="cell-top">
-                  <span className={`day-number ${isWeekend ? 'text-weekend' : ''}`}>
-                    {dayNum}
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="matrix-day-num tabular-nums">{dayNum}</span>
                   {dayRecords.length > 0 && (
-                    <span className="rec-count-pill">{dayRecords.length}</span>
+                    <span className="text-label" style={{ fontSize: '10px' }}>{dayRecords.length}</span>
                   )}
                 </div>
 
-                <div className="cell-badges">
-                  {dayRecords.slice(0, 3).map((r, idx) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                  {dayRecords.slice(0, 2).map((r, idx) => (
                     <div
                       key={idx}
-                      className={`attendance-mini-pill status-pill-${r.status.toLowerCase()}`}
-                      title={`${r.employee_name || 'Employee'}: ${r.status} (${r.notes || ''})`}
+                      className={r.status === 'Leave' ? 'att-tag-leave' : 'att-tag-present'}
+                      title={`${r.employee_name}: ${r.status}`}
                     >
-                      <span className="pill-status">{r.status}</span>
-                      {selectedEmpId === 'all' && (
-                        <span className="pill-emp-name">{r.employee_name?.split(' ')[0]}</span>
-                      )}
+                      {r.status === 'Leave' ? '✈️ Leave' : '✓ Present'} {selectedEmpId === 'all' && `(${r.employee_name?.split(' ')[0]})`}
                     </div>
                   ))}
-                  {dayRecords.length > 3 && (
-                    <span className="more-pill">+{dayRecords.length - 3} more</span>
+                  {dayRecords.length > 2 && (
+                    <span className="text-label" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+                      +{dayRecords.length - 2} more
+                    </span>
                   )}
                 </div>
               </div>
@@ -229,41 +205,29 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         </div>
       </div>
 
-      {/* Day Inspection Modal */}
+      {/* Day Modal */}
       {selectedDayDetails && (
-        <div className="modal-backdrop" onClick={() => setSelectedDayDetails(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title-box">
-                <CalendarIcon size={18} className="text-primary" />
-                <h4>Attendance Details for {selectedDayDetails.date}</h4>
-              </div>
+        <div className="modal-overlay" onClick={() => setSelectedDayDetails(null)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-box">
+              <h3>Attendance for {selectedDayDetails.date}</h3>
               <button className="modal-close-btn" onClick={() => setSelectedDayDetails(null)}>✕</button>
             </div>
-            <div className="modal-body">
-              <div className="attendance-details-list">
-                {selectedDayDetails.records.map((r) => (
-                  <div key={r.id} className="att-record-item">
-                    <div className="flex-between">
-                      <strong>{r.employee_name || `Employee #${r.employee_id}`}</strong>
-                      <span className={`status-badge status-pill-${r.status.toLowerCase()}`}>
-                        {r.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted mt-1">
-                      Department: {r.department || 'General'}
-                    </p>
-                    {r.notes && (
-                      <p className="text-sm text-accent mt-1 bg-surface-2 p-2 rounded">
-                        📝 {r.notes}
-                      </p>
-                    )}
+            <div className="modal-body-content">
+              {selectedDayDetails.records.map((r) => (
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-input)', backgroundColor: 'var(--bg-primary)' }}>
+                  <div>
+                    <strong style={{ fontSize: '13px' }}>{r.employee_name}</strong>
+                    <span className="text-caption" style={{ display: 'block', fontSize: '11px' }}>{r.notes || 'Standard log'}</span>
                   </div>
-                ))}
-              </div>
+                  <span className={r.status === 'Leave' ? 'att-tag-leave' : 'att-tag-present'}>
+                    {r.status}
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setSelectedDayDetails(null)}>
+            <div className="modal-footer-box">
+              <button className="btn btn-secondary btn-sm" onClick={() => setSelectedDayDetails(null)}>
                 Close
               </button>
             </div>

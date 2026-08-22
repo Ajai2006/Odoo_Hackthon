@@ -1,84 +1,89 @@
 import React from 'react';
-import { LeaveStatus, SLAInfo, SLAUrgency } from '@/types';
-import { Clock, CheckCircle2, XCircle, AlertTriangle, Flame } from 'lucide-react';
+import { LeaveStatus, SLAInfo } from '../types';
+import { Clock, CheckCircle2, XCircle, AlertCircle, Flame } from 'lucide-react';
 
 interface StatusBadgeProps {
   status: LeaveStatus;
   sla?: SLAInfo;
   showSla?: boolean;
-  size?: 'sm' | 'md' | 'lg';
 }
 
 /**
  * Member 4 Standard StatusBadge Component for Dayflow HRMS
- * Pending = Amber with pulse animation
- * Approved = Emerald Green
- * Rejected = Ruby Red
- * Includes optional SLA aging badge
+ * Rule: STATUS IS ALWAYS SHOWN AS COLOR + ICON + LABEL TOGETHER. Never color alone.
+ * Tokens:
+ *  - Pending:  warning #F59E0B + Clock icon + "Pending"
+ *  - Approved: success #10B981 + CheckCircle2 icon + "Approved"
+ *  - Rejected: danger  #F43F5E + XCircle icon + "Rejected"
  */
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
   status,
   sla,
   showSla = false,
-  size = 'md',
 }) => {
-  const sizeClass = size === 'sm' ? 'badge-sm' : size === 'lg' ? 'badge-lg' : 'badge-md';
-
   const renderBadge = () => {
     switch (status) {
       case 'pending':
         return (
-          <span className={`status-badge status-pending ${sizeClass}`}>
-            <span className="pulse-dot" />
-            <Clock className="badge-icon" size={14} />
+          <span className="status-badge status-badge-pending" aria-label="Status: Pending">
+            <Clock size={13} aria-hidden="true" />
             <span>Pending</span>
           </span>
         );
       case 'approved':
         return (
-          <span className={`status-badge status-approved ${sizeClass}`}>
-            <CheckCircle2 className="badge-icon" size={14} />
+          <span className="status-badge status-badge-approved" aria-label="Status: Approved">
+            <CheckCircle2 size={13} aria-hidden="true" />
             <span>Approved</span>
           </span>
         );
       case 'rejected':
         return (
-          <span className={`status-badge status-rejected ${sizeClass}`}>
-            <XCircle className="badge-icon" size={14} />
+          <span className="status-badge status-badge-rejected" aria-label="Status: Rejected">
+            <XCircle size={13} aria-hidden="true" />
             <span>Rejected</span>
           </span>
         );
       default:
-        return <span className={`status-badge status-neutral ${sizeClass}`}>{status}</span>;
+        return (
+          <span className="status-badge" aria-label={`Status: ${status}`}>
+            <AlertCircle size={13} aria-hidden="true" />
+            <span>{status}</span>
+          </span>
+        );
     }
   };
 
-  const renderSlaPill = () => {
+  const renderSlaTag = () => {
     if (!showSla || !sla || status !== 'pending') return null;
 
-    let urgencyClass = 'sla-normal';
+    let tagClass = 'sla-tag-normal';
     let Icon = Clock;
 
     if (sla.urgency === 'urgent') {
-      urgencyClass = 'sla-urgent';
+      tagClass = 'sla-tag-escalated';
       Icon = Flame;
     } else if (sla.urgency === 'warning') {
-      urgencyClass = 'sla-warning';
-      Icon = AlertTriangle;
+      tagClass = 'sla-tag-warning';
+      Icon = AlertCircle;
     }
 
     return (
-      <span className={`sla-pill ${urgencyClass} ${sizeClass}`} title={`Pending for ${sla.pending_hours} hours`}>
-        <Icon size={12} className="sla-icon" />
+      <span
+        className={`sla-tag ${tagClass}`}
+        title={`Request age: ${sla.pending_hours} hours`}
+        aria-label={`SLA aging: ${sla.label}`}
+      >
+        <Icon size={12} aria-hidden="true" />
         <span>{sla.label}</span>
       </span>
     );
   };
 
   return (
-    <div className="status-badge-container">
+    <div className="status-badge-wrapper">
       {renderBadge()}
-      {renderSlaPill()}
+      {renderSlaTag()}
     </div>
   );
 };
