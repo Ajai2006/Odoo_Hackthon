@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Payroll Management — Dayflow HRMS</title>
-  <meta name="description" content="Admin payroll management — view, edit, and manage salary structures for all employees.">
+  <meta name="description" content="Dayflow HRMS Admin Payroll Table — salary structure editing, live previews, and mandatory audit comments.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./components/ui/design-tokens.css">
@@ -12,50 +12,50 @@
   <link rel="stylesheet" href="./components/ui/sidebar.css">
   <link rel="stylesheet" href="./components/ui/components.css">
   <style>
-    .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-8); padding-bottom:var(--space-6); border-bottom:1px solid var(--border); }
-
-    /* Salary form grid */
-    .salary-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+    /* Salary Edit Form Grid */
+    .salary-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+    }
 
     .form-section-title {
-      font-size: var(--text-xs); font-weight: var(--fw-bold);
-      color: var(--text-secondary); text-transform: uppercase;
-      letter-spacing: 0.08em; margin-bottom: var(--space-3);
-      padding-bottom: var(--space-2); border-bottom: 1px solid var(--border);
+      font-size: var(--text-xs);
+      font-weight: var(--fw-bold);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--border);
       grid-column: 1 / -1;
+      margin-top: var(--space-2);
     }
+    .form-section-title.earnings   { color: #065f46; border-color: var(--success-bg); }
+    .form-section-title.deductions { color: #9f1239; border-color: var(--danger-bg);  }
 
-    .form-section-title.earnings  { color: #065f46; border-color: var(--success-bg); }
-    .form-section-title.deductions{ color: #9f1239; border-color: var(--danger-bg);  }
-
-    /* Preview bar */
-    .salary-preview {
-      background: var(--bg-muted); border-radius: var(--radius-input);
-      padding: var(--space-4); margin-top: var(--space-4);
-      display: grid; grid-template-columns: 1fr 1fr 1fr;
-      gap: var(--space-3); grid-column: 1 / -1;
-    }
-    .salary-preview-item { text-align: center; }
-    .salary-preview-label { font-size: var(--text-xs); color: var(--text-secondary); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.05em; }
-    .salary-preview-value { font-size: var(--text-xl); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; margin-top: 4px; }
-
-    /* Audit trail */
-    .audit-entry {
-      padding: var(--space-3);
+    /* Live Preview Bar inside Modal */
+    .live-preview-box {
+      background: var(--bg-primary);
       border: 1px solid var(--border);
       border-radius: var(--radius-input);
-      margin-bottom: var(--space-3);
-      background: var(--bg-primary);
+      padding: var(--space-4);
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--space-3);
+      text-align: center;
+      margin-top: var(--space-2);
     }
-    .audit-entry-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-1); }
-    .audit-entry-title  { font-size: var(--text-sm); font-weight: var(--fw-semibold); }
-    .audit-entry-time   { font-size: var(--text-xs); color: var(--text-secondary); }
-    .audit-entry-reason { font-size: var(--text-xs); color: var(--text-secondary); font-style: italic; margin-top: 4px; }
-    .audit-entry-change { font-size: var(--text-xs); color: var(--text-primary); margin-top: 4px; }
+    .preview-item-label { font-size: var(--text-xs); color: var(--text-secondary); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.05em; }
+    .preview-item-val   { font-size: var(--text-xl); font-weight: var(--fw-extrabold); font-variant-numeric: tabular-nums; margin-top: 2px; }
 
-    /* Validation error */
-    .form-input.error { border-color: var(--danger); }
-    .form-error { color: var(--danger); font-size: var(--text-xs); margin-top: 4px; }
+    /* Audit Entry Card */
+    .audit-card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
+      padding: var(--space-3) var(--space-4);
+      margin-bottom: var(--space-3);
+    }
   </style>
 </head>
 <body>
@@ -63,309 +63,287 @@
     <div id="sidebar-mount"></div>
 
     <main class="main-content" id="main-content">
-      <div class="topbar">
-        <div>
-          <h1>Payroll Management</h1>
-          <p>View and manage salary structures for all employees</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:var(--space-3);">
-          <select class="form-select" id="month-filter" style="width:auto;" onchange="loadPayroll()">
-            <option value="8-2026">August 2026</option>
-            <option value="7-2026">July 2026</option>
-            <option value="6-2026">June 2026</option>
-          </select>
-        </div>
-      </div>
+      <!-- TopBar Header -->
+      <div id="topbar-mount"></div>
 
-      <!-- Summary StatCards -->
+      <!-- Stat Cards Summary -->
       <div class="grid-cols-3" style="margin-bottom:var(--space-6);">
         <div class="stat-card animate-slideUp" data-color="primary">
-          <div class="stat-card-header"><span class="stat-card-title">Total Payroll</span><div class="stat-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div>
-          <div class="stat-card-value tabular" id="total-payroll-val">₹—</div>
+          <div class="stat-card-header">
+            <span class="stat-card-title">Total Payroll Expense</span>
+            <div class="stat-card-icon">${Icons.dollar}</div>
+          </div>
+          <div class="stat-card-value tabular" id="total-expense-val">₹—</div>
+          <div class="caption">Current month gross commitment</div>
         </div>
-        <div class="stat-card animate-slideUp" data-color="success" style="animation-delay:0.08s;">
-          <div class="stat-card-header"><span class="stat-card-title">Employees Paid</span><div class="stat-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></div></div>
-          <div class="stat-card-value tabular" id="employees-paid-val">—</div>
+
+        <div class="stat-card animate-slideUp" data-color="success" style="animation-delay:0.06s;">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Employees Processed</span>
+            <div class="stat-card-icon">${Icons.check}</div>
+          </div>
+          <div class="stat-card-value tabular" id="processed-count-val">—</div>
+          <div class="caption">100% ready for disbursement</div>
         </div>
-        <div class="stat-card animate-slideUp" data-color="info" style="animation-delay:0.16s;">
-          <div class="stat-card-header"><span class="stat-card-title">Avg Net Salary</span><div class="stat-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div></div>
-          <div class="stat-card-value tabular" id="avg-salary-val">₹—</div>
+
+        <div class="stat-card animate-slideUp" data-color="info" style="animation-delay:0.12s;">
+          <div class="stat-card-header">
+            <span class="stat-card-title">Average Take-Home</span>
+            <div class="stat-card-icon">${Icons.percent}</div>
+          </div>
+          <div class="stat-card-value tabular" id="avg-takehome-val">₹—</div>
+          <div class="caption">Net salary per employee</div>
         </div>
       </div>
 
-      <!-- Payroll DataTable -->
-      <div id="payroll-table-mount"></div>
+      <!-- Main Payroll Table Section -->
+      <div class="card card-flat" style="border:1px solid var(--border);padding:var(--space-6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);flex-wrap:wrap;gap:var(--space-3);">
+          <div>
+            <h3>Employee Salary Master</h3>
+            <p class="caption">Click any employee row to edit salary structure and record audit reasons</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:var(--space-3);">
+            <select class="form-select" id="pay-period-select" style="width:auto;" onchange="loadPayrollData()">
+              <option value="8-2026">August 2026</option>
+              <option value="7-2026">July 2026</option>
+            </select>
+            <button class="btn btn-secondary" onclick="exportCSV()">
+              ${Icons.download}<span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="payroll-table-mount"></div>
+      </div>
     </main>
   </div>
 
   <!-- Edit Salary Modal -->
   <div id="edit-modal-mount"></div>
 
-  <!-- Audit Trail Modal -->
+  <!-- Audit Modal -->
   <div id="audit-modal-mount"></div>
 
   <div class="toast-container"></div>
 
   <script type="module">
-    import { Sidebar, DataTable, Modal, StatusBadge, showToast, Icons, el, fmtCurrency, escHtml } from './components/ui/index.js';
+    import { Sidebar, TopBar, DataTable, Modal, StatusBadge, showToast, Icons, el, fmtCurrency, attachBlurValidation, escHtml } from './components/ui/index.js';
     import { DayflowAuth, DayflowDB } from './components/ui/index.js';
 
+    // Auth Guard
     const user = DayflowAuth.requireRole('admin');
-    if (!user) throw new Error('Admin only');
+    if (!user) throw new Error('Admin role required');
 
+    // Sidebar
     Sidebar({ role: 'admin', activeKey: 'admin-payroll', user: { name: user.name } });
     document.querySelector('.main-content').style.marginLeft = 'var(--sidebar-width)';
 
-    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    // TopBar Header
+    const topbar = TopBar({
+      title: 'Payroll Administration',
+      subtitle: 'Manage salary structures, deductions, and audit history',
+      user: { name: user.name, role: 'admin' },
+      searchPlaceholder: 'Search employee name, department, ID...'
+    });
+    document.getElementById('topbar-mount').appendChild(topbar);
+
     let allEmployees = [];
     let currentPayroll = [];
     let editModal, auditModal;
-
-    // ── Edit Salary Modal ──────────────────────────────────────────
     const editForm = document.createElement('div');
+    const auditContent = document.createElement('div');
+
+    // Modal initializations
     editModal = Modal({
       title: 'Edit Salary Structure',
       size: 'lg',
       children: editForm,
       footerButtons: [
-        (() => { const b = el('button', { class: 'btn btn-secondary', onclick: () => editModal.close() }); b.textContent = 'Cancel'; return b; })(),
-        (() => { const b = el('button', { class: 'btn btn-primary', id: 'save-payroll-btn', onclick: () => savePayroll() }); b.innerHTML = Icons.check + '<span>Save Changes</span>'; return b; })(),
+        (() => { const b=el('button',{class:'btn btn-secondary',onclick:()=>editModal.close()});b.textContent='Cancel';return b; })(),
+        (() => { const b=el('button',{class:'btn btn-primary',id:'save-salary-btn',onclick:()=>saveSalaryStructure()});b.innerHTML=Icons.check+'<span>Save & Log Comment</span>';return b; })(),
       ]
     });
 
-    // ── Audit Trail Modal ──────────────────────────────────────────
-    const auditContent = document.createElement('div');
-    auditModal = Modal({ title: 'Audit Trail', size: 'lg', children: auditContent });
+    auditModal = Modal({ title: 'Salary Change Audit Log', size: 'lg', children: auditContent });
 
     async function init() {
       await DayflowDB.init();
       allEmployees = await DayflowDB.getEmployees();
-      await loadPayroll();
+      await loadPayrollData();
     }
 
-    async function loadPayroll() {
-      const [month, year] = (document.getElementById('month-filter').value || '8-2026').split('-').map(Number);
-      const allP = await DayflowDB.getAllPayroll();
-      currentPayroll = allP.filter(p => p.month === month && p.year === year);
+    window.loadPayrollData = async function() {
+      const [month, year] = document.getElementById('pay-period-select').value.split('-').map(Number);
+      const records = await DayflowDB.getAllPayroll();
+      currentPayroll = records.filter(p => p.month === month && p.year === year);
 
-      // Update stat cards
+      const totalExp = currentPayroll.reduce((s, p) => s + p.gross_salary, 0);
       const totalNet = currentPayroll.reduce((s, p) => s + p.net_salary, 0);
       const avgNet   = currentPayroll.length ? Math.round(totalNet / currentPayroll.length) : 0;
-      document.getElementById('total-payroll-val').textContent = fmtCurrency(totalNet);
-      document.getElementById('employees-paid-val').textContent = currentPayroll.length;
-      document.getElementById('avg-salary-val').textContent = fmtCurrency(avgNet);
 
-      // Build table data
+      document.getElementById('total-expense-val').textContent  = fmtCurrency(totalExp);
+      document.getElementById('processed-count-val').textContent = `${currentPayroll.length} / ${allEmployees.length}`;
+      document.getElementById('avg-takehome-val').textContent   = fmtCurrency(avgNet);
+
       const tableData = currentPayroll.map(p => {
         const emp = allEmployees.find(e => e.employee_id === p.employee_id) || {};
         return {
           ...p,
-          emp_name:    emp.name || '—',
+          emp_name:    emp.name || p.employee_id,
           department:  emp.department || '—',
           designation: emp.designation || '—',
-          avatar:      (emp.name || 'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),
+          avatar:      (emp.name || 'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
         };
       });
 
       const mount = document.getElementById('payroll-table-mount');
       mount.innerHTML = '';
 
-      const exportBtn = el('button', { class: 'btn btn-secondary btn-sm' });
-      exportBtn.innerHTML = Icons.download + '<span>Export CSV</span>';
-      exportBtn.addEventListener('click', exportCSV);
-
       const table = DataTable({
         columns: [
           {
             key: 'emp_name', label: 'Employee', sortable: true,
             render: (val, row) => {
-              const d = document.createElement('div');
-              d.style.cssText = 'display:flex;align-items:center;gap:10px;';
-              d.innerHTML = `<div class="avatar" style="width:32px;height:32px;font-size:11px;flex-shrink:0;">${row.avatar}</div>
-                <div><div style="font-weight:600;font-size:var(--text-sm);">${escHtml(val)}</div>
-                <div style="font-size:var(--text-xs);color:var(--text-secondary);">${escHtml(row.employee_id)}</div></div>`;
-              return d;
+              const div = document.createElement('div');
+              div.style.cssText = 'display:flex;align-items:center;gap:10px;';
+              div.innerHTML = `<div class="avatar" style="width:32px;height:32px;font-size:11px;">${row.avatar}</div>
+                <div><div style="font-weight:600;font-size:var(--text-sm);">${escHtml(val)}</div><div style="font-size:var(--text-xs);color:var(--text-secondary);">${escHtml(row.employee_id)}</div></div>`;
+              return div;
             }
           },
           { key: 'department', label: 'Department', sortable: true },
-          { key: 'base_salary',   label: 'Basic', sortable: true, render: (v) => `<span class="tabular">${fmtCurrency(v)}</span>` },
-          { key: 'gross_salary',  label: 'Gross',  sortable: true, render: (v) => `<span class="tabular">${fmtCurrency(v)}</span>` },
+          { key: 'base_salary',  label: 'Basic Salary', sortable: true, render: (v) => `<span class="tabular">${fmtCurrency(v)}</span>` },
+          { key: 'gross_salary', label: 'Gross Salary', sortable: true, render: (v) => `<span class="tabular">${fmtCurrency(v)}</span>` },
           { key: 'total_deductions', label: 'Deductions', sortable: true, render: (v) => `<span class="tabular" style="color:var(--danger);">−${fmtCurrency(v)}</span>` },
-          { key: 'net_salary',   label: 'Net Pay', sortable: true, render: (v) => `<span class="tabular" style="font-weight:700;color:var(--primary-700);">${fmtCurrency(v)}</span>` },
+          { key: 'net_salary', label: 'Net Take-Home', sortable: true, render: (v) => `<span class="tabular" style="font-weight:700;color:var(--primary-700);">${fmtCurrency(v)}</span>` },
         ],
         data: tableData,
-        pageSize: 10,
-        toolbarActions: [exportBtn],
+        pageSize: 8,
+        onRowClick: (row) => openEditModal(row),
         actions: (row) => {
-          const editBtn  = el('button', { class: 'btn btn-secondary btn-sm', title: 'Edit salary' });
-          editBtn.innerHTML = Icons.edit + '<span>Edit</span>';
-          editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(row); });
+          const editBtn = el('button', { class: 'btn btn-secondary btn-sm' }, Icons.edit + '<span>Edit</span>');
+          editBtn.onclick = (e) => { e.stopPropagation(); openEditModal(row); };
 
-          const auditBtn = el('button', { class: 'btn btn-ghost btn-sm', title: 'View audit trail' });
-          auditBtn.innerHTML = Icons.activity;
-          auditBtn.addEventListener('click', (e) => { e.stopPropagation(); openAuditModal(row); });
+          const auditBtn = el('button', { class: 'btn btn-ghost btn-sm' }, Icons.activity);
+          auditBtn.title = 'View Audit Trail';
+          auditBtn.onclick = (e) => { e.stopPropagation(); openAuditModal(row); };
 
           return [editBtn, auditBtn];
         }
       });
 
       mount.appendChild(table.element);
-    }
+    };
 
-    // ── Open Edit Modal ────────────────────────────────────────────
     function openEditModal(row) {
-      editModal.setTitle(`Edit Salary — ${row.emp_name}`);
-
-      editForm.innerHTML = `
-        <div class="salary-form-grid" id="salary-form-grid">
-          <div class="form-section-title earnings">💰 Earnings</div>
-
-          <div class="form-group">
-            <label class="form-label" for="f-base">Basic Salary *</label>
-            <div style="position:relative;">
-              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:var(--text-sm);">₹</span>
-              <input class="form-input" id="f-base" type="number" min="0" step="100"
-                value="${row.base_salary}" style="padding-left:28px;" oninput="recalculate()">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="f-hra">House Rent Allowance</label>
-            <div style="position:relative;">
-              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:var(--text-sm);">₹</span>
-              <input class="form-input" id="f-hra" type="number" min="0" step="100"
-                value="${row.house_allowance}" style="padding-left:28px;" oninput="recalculate()">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="f-med">Medical Allowance</label>
-            <div style="position:relative;">
-              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:var(--text-sm);">₹</span>
-              <input class="form-input" id="f-med" type="number" min="0" step="100"
-                value="${row.medical_allowance}" style="padding-left:28px;" oninput="recalculate()">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="f-trans">Transport Allowance</label>
-            <div style="position:relative;">
-              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:var(--text-sm);">₹</span>
-              <input class="form-input" id="f-trans" type="number" min="0" step="100"
-                value="${row.transport_allowance}" style="padding-left:28px;" oninput="recalculate()">
-            </div>
-          </div>
-
-          <div class="form-section-title deductions">📉 Deductions</div>
-
-          <div class="form-group">
-            <label class="form-label" for="f-tax">Income Tax (TDS)</label>
-            <div style="position:relative;">
-              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:var(--text-sm);">₹</span>
-              <input class="form-input" id="f-tax" type="number" min="0" step="100"
-                value="${row.tax_deduction}" style="padding-left:28px;" oninput="recalculate()">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="f-pf">Provident Fund</label>
-            <div style="position:relative;">
-              <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-secondary);font-size:var(--text-sm);">₹</span>
-              <input class="form-input" id="f-pf" type="number" min="0" step="100"
-                value="${row.provident_fund}" style="padding-left:28px;" oninput="recalculate()">
-            </div>
-          </div>
-
-          <!-- Live preview -->
-          <div class="salary-preview">
-            <div class="salary-preview-item">
-              <div class="salary-preview-label">Gross Salary</div>
-              <div class="salary-preview-value" style="color:var(--success);" id="preview-gross">₹—</div>
-            </div>
-            <div class="salary-preview-item">
-              <div class="salary-preview-label">Deductions</div>
-              <div class="salary-preview-value" style="color:var(--danger);" id="preview-deduct">₹—</div>
-            </div>
-            <div class="salary-preview-item">
-              <div class="salary-preview-label">Net Salary</div>
-              <div class="salary-preview-value" style="color:var(--primary-700);" id="preview-net">₹—</div>
-            </div>
-          </div>
-
-          <div class="form-section-title" style="grid-column:1/-1;border-color:var(--border-strong);">📝 Audit Log</div>
-
-          <div class="form-group" style="grid-column:1/-1;">
-            <label class="form-label" for="f-reason">Reason for Change *</label>
-            <textarea class="form-input form-textarea" id="f-reason" rows="3"
-              placeholder="e.g. Annual increment per performance review — Q2 2026 appraisal cycle"></textarea>
-            <div class="form-hint">Required: explain why this salary is being modified. This is logged for compliance.</div>
-            <div class="form-error" id="reason-error" style="display:none;">Reason is required.</div>
-          </div>
-        </div>`;
-
-      // Store current row id for saving
+      editModal.setTitle(`Edit Salary Structure — ${row.emp_name}`);
       editForm.dataset.recordId = row.id;
       editForm.dataset.empName  = row.emp_name;
 
-      // Expose recalculate globally for oninput
-      window.recalculate = recalculate;
+      editForm.innerHTML = `
+        <div class="salary-form-grid">
+          <div class="form-section-title earnings">💰 Earnings Components</div>
 
-      recalculate();
+          <div class="form-group">
+            <label class="form-label" for="f-base">Basic Salary (₹) *</label>
+            <input class="form-input tabular" id="f-base" type="number" min="0" value="${row.base_salary}">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="f-hra">House Rent Allowance (HRA) (₹)</label>
+            <input class="form-input tabular" id="f-hra" type="number" min="0" value="${row.house_allowance}">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="f-med">Medical Allowance (₹)</label>
+            <input class="form-input tabular" id="f-med" type="number" min="0" value="${row.medical_allowance}">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="f-trans">Transport Allowance (₹)</label>
+            <input class="form-input tabular" id="f-trans" type="number" min="0" value="${row.transport_allowance}">
+          </div>
+
+          <div class="form-section-title deductions">📉 Deduction Components</div>
+
+          <div class="form-group">
+            <label class="form-label" for="f-tax">Income Tax (TDS) (₹)</label>
+            <input class="form-input tabular" id="f-tax" type="number" min="0" value="${row.tax_deduction}">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="f-pf">Provident Fund (PF) (₹)</label>
+            <input class="form-input tabular" id="f-pf" type="number" min="0" value="${row.provident_fund}">
+          </div>
+
+          <!-- Live Calculated Preview Box -->
+          <div class="live-preview-box">
+            <div>
+              <div class="preview-item-label">Gross Salary</div>
+              <div class="preview-item-val" style="color:var(--success);" id="p-gross">₹0</div>
+            </div>
+            <div>
+              <div class="preview-item-label">Total Deductions</div>
+              <div class="preview-item-val" style="color:var(--danger);" id="p-deduct">₹0</div>
+            </div>
+            <div>
+              <div class="preview-item-label">Net Take-Home</div>
+              <div class="preview-item-val" style="color:var(--primary-700);" id="p-net">₹0</div>
+            </div>
+          </div>
+
+          <div class="form-section-title" style="grid-column:1/-1;">📝 Mandatory Audit Reason</div>
+
+          <div class="form-group" style="grid-column:1/-1;">
+            <label class="form-label" for="f-reason">Comment / Reason for Change *</label>
+            <textarea class="form-input form-textarea" id="f-reason" rows="3" placeholder="e.g. Approved Annual Appraisal Revision — Q3 2026"></textarea>
+            <div class="caption" style="margin-top:2px;">Required: Reason is logged for HR audit compliance.</div>
+          </div>
+        </div>`;
+
+      // Live Calculation Handlers
+      const inputs = ['f-base','f-hra','f-med','f-trans','f-tax','f-pf'].map(id => document.getElementById(id));
+      const recalc = () => {
+        const getV = (id) => Math.max(0, parseFloat(document.getElementById(id)?.value || 0));
+        const gross  = getV('f-base') + getV('f-hra') + getV('f-med') + getV('f-trans');
+        const deduct = getV('f-tax') + getV('f-pf');
+        const net    = gross - deduct;
+
+        document.getElementById('p-gross').textContent  = fmtCurrency(gross);
+        document.getElementById('p-deduct').textContent = fmtCurrency(deduct);
+        document.getElementById('p-net').textContent    = fmtCurrency(Math.max(0, net));
+      };
+
+      inputs.forEach(inp => inp.addEventListener('input', recalc));
+      recalc();
+
+      // Attach inline blur validation per prompt spec!
+      inputs.forEach(inp => attachBlurValidation(inp, 'Value must be non-negative', val => val !== '' && Number(val) >= 0));
+      attachBlurValidation(document.getElementById('f-reason'), 'Audit reason comment is required to save');
+
       editModal.open();
     }
 
-    function recalculate() {
-      const get = (id) => Math.max(0, parseFloat(document.getElementById(id)?.value || 0));
-      const gross  = get('f-base') + get('f-hra') + get('f-med') + get('f-trans');
-      const deduct = get('f-tax') + get('f-pf');
-      const net    = gross - deduct;
-
-      const pg = document.getElementById('preview-gross');
-      const pd = document.getElementById('preview-deduct');
-      const pn = document.getElementById('preview-net');
-      if (pg) pg.textContent = fmtCurrency(gross);
-      if (pd) pd.textContent = fmtCurrency(deduct);
-      if (pn) {
-        pn.textContent = fmtCurrency(Math.max(0, net));
-        pn.style.color = net > 0 ? 'var(--primary-700)' : 'var(--danger)';
-      }
-    }
-
-    async function savePayroll() {
+    async function saveSalaryStructure() {
       const recordId = parseInt(editForm.dataset.recordId);
-      const reason   = document.getElementById('f-reason')?.value?.trim();
+      const reason   = document.getElementById('f-reason').value.trim();
 
-      // Validate reason
       if (!reason) {
-        document.getElementById('reason-error').style.display = 'block';
         document.getElementById('f-reason').classList.add('error');
+        showToast('Audit comment is required before saving salary changes.', 'error');
         return;
       }
-      document.getElementById('reason-error').style.display = 'none';
-      document.getElementById('f-reason').classList.remove('error');
 
-      const get = (id) => Math.max(0, parseFloat(document.getElementById(id)?.value || 0));
-
+      const getV = (id) => Math.max(0, parseFloat(document.getElementById(id).value || 0));
       const updates = {
-        base_salary:        get('f-base'),
-        house_allowance:    get('f-hra'),
-        medical_allowance:  get('f-med'),
-        transport_allowance:get('f-trans'),
-        tax_deduction:      get('f-tax'),
-        provident_fund:     get('f-pf'),
+        base_salary:        getV('f-base'),
+        house_allowance:    getV('f-hra'),
+        medical_allowance:  getV('f-med'),
+        transport_allowance:getV('f-trans'),
+        tax_deduction:      getV('f-tax'),
+        provident_fund:     getV('f-pf'),
       };
-
-      // Validate all non-negative
-      for (const [k, v] of Object.entries(updates)) {
-        if (v < 0) {
-          showToast(`${k.replace(/_/g,' ')} cannot be negative.`, 'error');
-          return;
-        }
-      }
-
-      const saveBtn = document.getElementById('save-payroll-btn');
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving…';
 
       try {
         await DayflowDB.updatePayrollWithAudit(recordId, updates, {
@@ -373,63 +351,53 @@
           updatedBy: user.name
         });
 
-        showToast(`Salary for ${editForm.dataset.empName} updated successfully!`, 'success');
+        showToast(`Updated salary for ${editForm.dataset.empName}`, 'success');
         editModal.close();
-        await loadPayroll();
+        await loadPayrollData();
       } catch (err) {
-        showToast('Error: ' + err.message, 'error');
-      } finally {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = Icons.check + '<span>Save Changes</span>';
+        showToast('Save failed: ' + err.message, 'error');
       }
     }
 
-    // ── Audit Trail Modal ────────────────────────────────────────────
     async function openAuditModal(row) {
-      auditModal.setTitle(`Audit Trail — ${row.emp_name}`);
-      auditContent.innerHTML = '<div class="skeleton" style="height:200px;border-radius:var(--radius-input);"></div>';
+      auditModal.setTitle(`Salary Audit Trail — ${row.emp_name}`);
+      auditContent.innerHTML = '<div class="skeleton" style="height:140px;"></div>';
       auditModal.open();
 
       const logs = await DayflowDB.getAuditLog('payroll', row.id);
 
       if (!logs.length) {
-        auditContent.innerHTML = `<div class="empty-state" style="padding:var(--space-8);"><p>No audit entries for this record.</p></div>`;
+        auditContent.innerHTML = `<div class="empty-state"><p>No audit history for this record.</p></div>`;
         return;
       }
 
-      auditContent.innerHTML = logs.map(log => {
-        const oldV = log.old_value ? JSON.parse(log.old_value) : null;
-        const newV = log.new_value ? JSON.parse(log.new_value) : null;
-        return `
-          <div class="audit-entry animate-fadeIn">
-            <div class="audit-entry-header">
-              <span class="audit-entry-title">${log.action} by ${escHtml(log.changed_by)}</span>
-              <span class="audit-entry-time">${new Date(log.created_at).toLocaleString('en-IN')}</span>
-            </div>
-            <div class="audit-entry-reason">📝 ${escHtml(log.reason || '—')}</div>
-            ${oldV && newV ? `
-              <div class="audit-entry-change">
-                Net: <span style="color:var(--danger);">${fmtCurrency(oldV.net_salary)}</span>
-                → <span style="color:var(--success);">${fmtCurrency(newV.net_salary)}</span>
-              </div>` : ''}
-          </div>`;
-      }).join('');
+      auditContent.innerHTML = logs.map(l => `
+        <div class="audit-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span style="font-weight:600;font-size:var(--text-sm);">${l.action} by ${escHtml(l.changed_by)}</span>
+            <span class="caption">${new Date(l.created_at).toLocaleString('en-IN')}</span>
+          </div>
+          <div style="font-size:var(--text-xs);color:var(--text-secondary);font-style:italic;">"${escHtml(l.reason)}"</div>
+        </div>`).join('');
     }
 
-    function exportCSV() {
-      const rows = [['Employee ID','Name','Department','Basic','Gross','Deductions','Net Pay','Month','Year']];
+    window.exportCSV = function() {
+      const rows = [['Employee ID','Name','Department','Basic','Gross','Deductions','Net Salary']];
       currentPayroll.forEach(p => {
         const emp = allEmployees.find(e => e.employee_id === p.employee_id) || {};
-        rows.push([p.employee_id, emp.name||'', emp.department||'', p.base_salary, p.gross_salary, p.total_deductions, p.net_salary, p.month, p.year]);
+        rows.push([p.employee_id, emp.name||'', emp.department||'', p.base_salary, p.gross_salary, p.total_deductions, p.net_salary]);
       });
-      const csv = rows.map(r => r.join(',')).join('\n');
-      const a   = document.createElement('a');
-      a.href    = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-      a.download= `payroll_${new Date().toISOString().slice(0,7)}.csv`;
-      a.click();
-    }
 
-    window.loadPayroll = loadPayroll;
+      const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(r => r.join(',')).join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `Dayflow_Payroll_${new Date().toISOString().slice(0,7)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
     init().catch(err => showToast('Error: ' + err.message, 'error'));
   </script>
 </body>

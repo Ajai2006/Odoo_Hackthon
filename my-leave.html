@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Leave — Dayflow HRMS</title>
-  <meta name="description" content="View and apply for leave — track your leave balance and request status.">
+  <meta name="description" content="Dayflow HRMS Employee Leave Management — apply for leave and view leave balance.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./components/ui/design-tokens.css">
@@ -12,43 +12,73 @@
   <link rel="stylesheet" href="./components/ui/sidebar.css">
   <link rel="stylesheet" href="./components/ui/components.css">
   <style>
-    .topbar { display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-8);padding-bottom:var(--space-6);border-bottom:1px solid var(--border); }
-    .leave-balance-card { background:linear-gradient(135deg,var(--primary-700),var(--primary-500));border-radius:var(--radius-card);padding:var(--space-6);color:white;margin-bottom:var(--space-6);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4); }
-    .balance-num { font-size:3rem;font-weight:800;color:white;line-height:1; }
-    .balance-label { font-size:var(--text-sm);opacity:0.7;margin-bottom:4px; }
+    .leave-balance-hero {
+      background: linear-gradient(135deg, var(--primary-700), var(--primary-900));
+      border-radius: var(--radius-card);
+      padding: var(--space-6) var(--space-8);
+      color: white;
+      margin-bottom: var(--space-6);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+      box-shadow: var(--shadow-md);
+    }
+    .balance-num { font-size: 3rem; font-weight: 800; color: white; line-height: 1; font-variant-numeric: tabular-nums; }
   </style>
 </head>
 <body>
   <div class="app-shell">
     <div id="sidebar-mount"></div>
+
     <main class="main-content" id="main-content">
-      <div class="topbar">
-        <div><h1>My Leave</h1><p>Track your leave balance and requests</p></div>
+      <!-- TopBar Header -->
+      <div id="topbar-mount"></div>
+
+      <!-- Action Banner -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-6);">
+        <div>
+          <h3>My Leave Applications</h3>
+          <p class="caption">Track status of submitted leave requests</p>
+        </div>
         <button class="btn btn-primary" id="apply-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:16px;height:16px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Apply for Leave
         </button>
       </div>
+
       <div id="balance-card-mount"></div>
       <div id="leave-table-mount"></div>
     </main>
   </div>
+
   <div id="apply-modal-mount"></div>
   <div class="toast-container"></div>
 
   <script type="module">
-    import { Sidebar, DataTable, Modal, StatusBadge, showToast, Icons, el, escHtml } from './components/ui/index.js';
+    import { Sidebar, TopBar, DataTable, Modal, StatusBadge, showToast, Icons, el, escHtml, attachBlurValidation } from './components/ui/index.js';
     import { DayflowAuth, DayflowDB } from './components/ui/index.js';
 
     const user = DayflowAuth.requireAuth();
     if (!user) throw new Error('Not authenticated');
-    if (user.role === 'admin') { window.location.href = 'leave-admin.html'; }
+    if (user.role === 'admin') window.location.href = 'leave-admin.html';
+
     Sidebar({ role: 'employee', activeKey: 'my-leave', user: { name: user.name, department: user.department } });
     document.querySelector('.main-content').style.marginLeft = 'var(--sidebar-width)';
 
+    const topbar = TopBar({
+      title: 'Leave Portal',
+      subtitle: 'Leave balance, application, and tracking',
+      user: { name: user.name, role: user.role, department: user.department }
+    });
+    document.getElementById('topbar-mount').appendChild(topbar);
+
     const applyForm = document.createElement('div');
     const applyModal = Modal({
-      title: 'Apply for Leave', size: 'sm', children: applyForm,
+      title: 'Apply for Leave',
+      size: 'sm',
+      children: applyForm,
       footerButtons: [
         (() => { const b=el('button',{class:'btn btn-secondary',onclick:()=>applyModal.close()});b.textContent='Cancel';return b; })(),
         (() => { const b=el('button',{class:'btn btn-primary',id:'submit-leave-btn',onclick:()=>submitLeave()});b.innerHTML=Icons.check+'<span>Submit Request</span>';return b; })(),
@@ -60,7 +90,10 @@
         <div class="form-group">
           <label class="form-label" for="lv-type">Leave Type *</label>
           <select class="form-select" id="lv-type">
-            <option>Casual Leave</option><option>Sick Leave</option><option>Earned Leave</option><option>Work From Home</option><option>Maternity/Paternity Leave</option>
+            <option>Casual Leave</option>
+            <option>Sick Leave</option>
+            <option>Earned Leave</option>
+            <option>Work From Home</option>
           </select>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);">
@@ -69,63 +102,81 @@
         </div>
         <div class="form-group">
           <label class="form-label" for="lv-reason">Reason *</label>
-          <textarea class="form-input form-textarea" id="lv-reason" rows="3" placeholder="Please describe the reason for your leave..."></textarea>
+          <textarea class="form-input form-textarea" id="lv-reason" rows="3" placeholder="Describe the reason for leave..."></textarea>
         </div>
       </div>`;
 
-    document.getElementById('apply-btn').addEventListener('click', () => applyModal.open());
+    document.getElementById('apply-btn').addEventListener('click', () => {
+      applyModal.open();
+      attachBlurValidation(document.getElementById('lv-reason'), 'Leave reason is required');
+    });
 
     async function submitLeave() {
       const type   = document.getElementById('lv-type').value;
       const from   = document.getElementById('lv-from').value;
       const to     = document.getElementById('lv-to').value;
       const reason = document.getElementById('lv-reason').value.trim();
-      if (!reason) { showToast('Please provide a reason.','error'); return; }
-      await DayflowDB.saveLeaveRequest({ employee_id: user.employee_id, type, start_date: from, end_date: to, reason, status: 'pending', applied_at: new Date().toISOString() });
-      showToast('Leave request submitted!','success');
+
+      if (!reason) {
+        document.getElementById('lv-reason').classList.add('error');
+        showToast('Please state a reason for your leave request.', 'error');
+        return;
+      }
+
+      await DayflowDB.saveLeaveRequest({
+        employee_id: user.employee_id, type, start_date: from, end_date: to, reason, status: 'pending', applied_at: new Date().toISOString()
+      });
+
+      showToast('Leave application submitted!', 'success');
       applyModal.close();
       await loadLeave();
     }
 
     async function loadLeave() {
       await DayflowDB.init();
-      const [leaves, emp] = await Promise.all([DayflowDB.getLeaveRequests(user.employee_id), DayflowDB.getEmployee(user.employee_id)]);
+      const [leaves, emp] = await Promise.all([
+        DayflowDB.getLeaveRequests(user.employee_id),
+        DayflowDB.getEmployee(user.employee_id)
+      ]);
 
-      // Balance card
       const balMount = document.getElementById('balance-card-mount');
       balMount.innerHTML = `
-        <div class="leave-balance-card animate-slideUp">
+        <div class="leave-balance-hero animate-slideUp">
           <div>
-            <div class="balance-label">Available Leave Balance</div>
-            <div class="balance-num">${emp?.leave_balance??0}</div>
-            <div style="font-size:var(--text-sm);opacity:0.7;margin-top:4px;">days remaining</div>
+            <div style="font-size:var(--text-xs);color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.06em;">Available Leave Balance</div>
+            <div class="balance-num">${emp?.leave_balance ?? 12}</div>
+            <div style="font-size:var(--text-sm);color:rgba(255,255,255,0.7);margin-top:2px;">Days remaining for current annual cycle</div>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4);text-align:center;">
-            <div><div style="font-size:1.5rem;font-weight:700;">${leaves.filter(l=>l.status==='approved').length}</div><div style="font-size:var(--text-xs);opacity:0.7;">Approved</div></div>
-            <div><div style="font-size:1.5rem;font-weight:700;">${leaves.filter(l=>l.status==='pending').length}</div><div style="font-size:var(--text-xs);opacity:0.7;">Pending</div></div>
-            <div><div style="font-size:1.5rem;font-weight:700;">${leaves.filter(l=>l.status==='rejected').length}</div><div style="font-size:var(--text-xs);opacity:0.7;">Rejected</div></div>
+          <div style="display:flex;gap:var(--space-6);text-align:center;">
+            <div><div style="font-size:1.5rem;font-weight:700;">${leaves.filter(l=>l.status==='approved').length}</div><div class="caption" style="color:rgba(255,255,255,0.7);">Approved</div></div>
+            <div><div style="font-size:1.5rem;font-weight:700;">${leaves.filter(l=>l.status==='pending').length}</div><div class="caption" style="color:rgba(255,255,255,0.7);">Pending</div></div>
+            <div><div style="font-size:1.5rem;font-weight:700;">${leaves.filter(l=>l.status==='rejected').length}</div><div class="caption" style="color:rgba(255,255,255,0.7);">Rejected</div></div>
           </div>
         </div>`;
 
-      // Table
-      const mount = document.getElementById('leave-table-mount'); mount.innerHTML='';
-      const sorted = [...leaves].sort((a,b)=>new Date(b.applied_at)-new Date(a.applied_at));
+      const mount = document.getElementById('leave-table-mount');
+      mount.innerHTML = '';
+
+      const sorted = [...leaves].sort((a,b) => new Date(b.applied_at) - new Date(a.applied_at));
+
       const table = DataTable({
         columns: [
-          { key:'type',       label:'Leave Type',  sortable:true },
-          { key:'start_date', label:'From', render:(v)=>new Date(v).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) },
-          { key:'end_date',   label:'To',   render:(v)=>new Date(v).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) },
-          { key:'reason',     label:'Reason' },
-          { key:'status', label:'Status', sortable:true, render:(v)=>StatusBadge({status:v}) },
-          { key:'applied_at', label:'Applied', sortable:true, render:(v)=>new Date(v).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}) },
+          { key: 'type',       label: 'Leave Type', sortable: true },
+          { key: 'start_date', label: 'From', render: (v) => new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
+          { key: 'end_date',   label: 'To',   render: (v) => new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
+          { key: 'reason',     label: 'Reason' },
+          { key: 'status', label: 'Status', sortable: true, render: (v) => StatusBadge({ status: v }) },
+          { key: 'applied_at', label: 'Applied On', sortable: true, render: (v) => new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) },
         ],
-        data: sorted, pageSize:10,
-        emptyMessage: 'No leave requests yet. Click "Apply for Leave" to submit one.',
+        data: sorted,
+        pageSize: 8,
+        emptyMessage: 'No leave applications yet. Click "Apply for Leave" above to submit your first request.',
       });
+
       mount.appendChild(table.element);
     }
 
-    loadLeave().catch(err=>showToast('Error: '+err.message,'error'));
+    loadLeave().catch(err => showToast('Error: ' + err.message, 'error'));
   </script>
 </body>
 </html>

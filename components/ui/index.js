@@ -979,13 +979,104 @@ const DayflowDB = {
 };
 
 // ──────────────────────────────────────────────────────────────
+// TopBar Component
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * TopBar — persistent top bar with search, notification bell, avatar dropdown
+ * @param {object} props
+ * @returns HTMLElement
+ */
+function TopBar({ title, subtitle, user = {}, searchPlaceholder = "Search employees, records...", onSearch } = {}) {
+  const topbar = el('header', { class: 'topbar-header' });
+  const initials = (user.name || 'User').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const roleName = user.role === 'admin' ? 'HR Admin' : (user.department || 'Employee');
+
+  topbar.innerHTML = `
+    <div class="topbar-left">
+      ${title ? `
+        <div class="topbar-title-group">
+          <h1 class="topbar-title">${escHtml(title)}</h1>
+          ${subtitle ? `<p class="topbar-subtitle">${escHtml(subtitle)}</p>` : ''}
+        </div>` : ''}
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-search">
+        <span class="topbar-search-icon">${Icons.search}</span>
+        <input type="text" class="topbar-search-input" placeholder="${escHtml(searchPlaceholder)}" aria-label="Global search">
+      </div>
+      <div class="topbar-icon-btn" title="Notifications">
+        ${Icons.bell}
+        <span class="topbar-unread-badge"></span>
+      </div>
+      <div class="topbar-user-dropdown" title="${escHtml(user.name || 'User')} (${escHtml(roleName)})">
+        <div class="avatar" style="width:34px;height:34px;font-size:12px;">${escHtml(initials)}</div>
+        <div class="topbar-user-info">
+          <div class="topbar-user-name">${escHtml(user.name || 'User')}</div>
+          <div class="topbar-user-role">${escHtml(roleName)}</div>
+        </div>
+      </div>
+    </div>`;
+
+  const searchInput = topbar.querySelector('.topbar-search-input');
+  if (searchInput && onSearch) {
+    searchInput.addEventListener('input', e => onSearch(e.target.value));
+  }
+
+  return topbar;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Attach Blur Validation Helper
+// ──────────────────────────────────────────────────────────────
+
+/**
+ * Attaches inline error validation on blur to an input field
+ * @param {HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement} input
+ * @param {string} [errorMsg]
+ * @param {Function} [validatorFn] - (value) => boolean
+ */
+function attachBlurValidation(input, errorMsg = 'This field is required.', validatorFn = null) {
+  if (!input) return null;
+  const parent = input.closest('.form-group') || input.parentElement;
+  let err = parent.querySelector('.form-error');
+  if (!err) {
+    err = el('div', { class: 'form-error', style: 'display:none;color:var(--danger);font-size:var(--text-xs);margin-top:4px;' });
+    parent.appendChild(err);
+  }
+
+  const validate = () => {
+    const val = input.value ? input.value.trim() : '';
+    const isOk = validatorFn ? validatorFn(val, input) : val !== '';
+    if (!isOk) {
+      input.classList.add('error');
+      err.textContent = errorMsg;
+      err.style.display = 'block';
+      return false;
+    } else {
+      input.classList.remove('error');
+      err.style.display = 'none';
+      return true;
+    }
+  };
+
+  input.addEventListener('blur', validate);
+  input.addEventListener('input', () => {
+    if (input.classList.contains('error')) validate();
+  });
+
+  return validate;
+}
+
+// ──────────────────────────────────────────────────────────────
 // Exports
 // ──────────────────────────────────────────────────────────────
 
 // Expose globally (for non-module HTML scripts)
-window.DayflowUI    = { StatCard, DataTable, StatusBadge, Modal, Sidebar, showToast, Icons, el, escHtml, fmtCurrency, fmtNumber, fmtDate };
+window.DayflowUI    = { StatCard, DataTable, StatusBadge, Modal, Sidebar, TopBar, attachBlurValidation, showToast, Icons, el, escHtml, fmtCurrency, fmtNumber, fmtDate };
 window.DayflowDB    = DayflowDB;
 window.DayflowAuth  = DayflowAuth;
 
 // ES module exports (for bundler usage)
-export { StatCard, DataTable, StatusBadge, Modal, Sidebar, showToast, Icons, el, escHtml, fmtCurrency, fmtNumber, fmtDate, DayflowDB, DayflowAuth };
+export { StatCard, DataTable, StatusBadge, Modal, Sidebar, TopBar, attachBlurValidation, showToast, Icons, el, escHtml, fmtCurrency, fmtNumber, fmtDate, DayflowDB, DayflowAuth };
+

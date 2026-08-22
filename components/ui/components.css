@@ -218,7 +218,7 @@
 }
 
 /* Table */
-.data-table-scroll { overflow-x: auto; }
+.data-table-scroll { overflow-x: auto; max-height: 520px; }
 
 .data-table {
   width: 100%;
@@ -226,7 +226,12 @@
   font-size: var(--text-sm);
 }
 
-.data-table thead { background: var(--bg-primary); }
+.data-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg-primary);
+}
 
 .data-table th {
   padding: var(--space-3) var(--space-4);
@@ -239,6 +244,7 @@
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   user-select: none;
+  background: var(--bg-primary);
 }
 
 .data-table th.sortable { cursor: pointer; }
@@ -255,12 +261,90 @@
   transition: background var(--transition-fast);
 }
 
+/* Light zebra striping (#FAFBFC alternate rows) per spec */
+.data-table tbody tr:nth-child(even) td { background: #FAFBFC; }
 .data-table tbody tr:last-child td { border-bottom: none; }
 
-.data-table tbody tr:hover td { background: var(--bg-primary); }
+.data-table tbody tr:hover td { background: var(--primary-50) !important; }
 
 .data-table tbody tr.clickable { cursor: pointer; }
-.data-table tbody tr.clickable:hover td { background: var(--primary-50); }
+.data-table tbody tr.clickable:hover td { background: var(--primary-50) !important; }
+
+/* Grid view alternate for DataTable */
+.data-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.data-grid-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: var(--shadow-xs);
+}
+
+.data-grid-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-300);
+}
+
+/* Timeline Activity Feed */
+.timeline-feed {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-left: var(--space-6);
+}
+
+.timeline-feed::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--border);
+}
+
+.timeline-item {
+  position: relative;
+  padding: var(--space-3) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timeline-icon {
+  position: absolute;
+  left: -24px;
+  top: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.timeline-icon svg { width: 12px; height: 12px; }
+.timeline-icon.success { border-color: var(--success); color: var(--success); background: var(--success-bg); }
+.timeline-icon.warning { border-color: var(--warning); color: var(--warning); background: var(--warning-bg); }
+.timeline-icon.danger  { border-color: var(--danger);  color: var(--danger);  background: var(--danger-bg); }
+.timeline-icon.info    { border-color: var(--info);    color: var(--info);    background: var(--info-bg); }
+
+.timeline-title { font-size: var(--text-sm); font-weight: var(--fw-medium); color: var(--text-primary); }
+.timeline-time  { font-size: var(--text-xs); color: var(--text-secondary); }
 
 /* Table actions cell */
 .table-actions {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Leave Management — Dayflow HRMS</title>
-  <meta name="description" content="Admin leave management — review and approve/reject employee leave requests.">
+  <meta name="description" content="Dayflow HRMS Leave Management — approve or reject employee leave applications.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./components/ui/design-tokens.css">
@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="./components/ui/sidebar.css">
   <link rel="stylesheet" href="./components/ui/components.css">
   <style>
-    .topbar { display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-8);padding-bottom:var(--space-6);border-bottom:1px solid var(--border); }
     .filter-tabs { display:flex;gap:var(--space-2);margin-bottom:var(--space-6); }
     .filter-tab { padding:var(--space-2) var(--space-4);border-radius:var(--radius-btn);font-size:var(--text-sm);font-weight:var(--fw-medium);cursor:pointer;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-secondary);transition:all var(--transition-fast); }
     .filter-tab.active { background:var(--primary-700);color:white;border-color:var(--primary-700); }
@@ -22,30 +21,42 @@
 <body>
   <div class="app-shell">
     <div id="sidebar-mount"></div>
+
     <main class="main-content" id="main-content">
-      <div class="topbar">
-        <div><h1>Leave Management</h1><p>Review and action employee leave requests</p></div>
-      </div>
+      <!-- TopBar Header -->
+      <div id="topbar-mount"></div>
+
       <div class="grid-cols-3" id="leave-stats" style="margin-bottom:var(--space-6);"></div>
+
       <div class="filter-tabs" id="filter-tabs">
-        <button class="filter-tab active" data-filter="all">All</button>
+        <button class="filter-tab active" data-filter="all">All Requests</button>
         <button class="filter-tab" data-filter="pending">Pending</button>
         <button class="filter-tab" data-filter="approved">Approved</button>
         <button class="filter-tab" data-filter="rejected">Rejected</button>
       </div>
+
       <div id="leave-table-mount"></div>
     </main>
   </div>
+
   <div class="toast-container"></div>
 
   <script type="module">
-    import { Sidebar, DataTable, StatusBadge, StatCard, showToast, Icons, el, escHtml } from './components/ui/index.js';
+    import { Sidebar, TopBar, DataTable, StatusBadge, StatCard, showToast, Icons, el, escHtml } from './components/ui/index.js';
     import { DayflowAuth, DayflowDB } from './components/ui/index.js';
 
     const user = DayflowAuth.requireRole('admin');
-    if (!user) throw new Error('Admin only');
+    if (!user) throw new Error('Admin role required');
+
     Sidebar({ role: 'admin', activeKey: 'leave-admin', user: { name: user.name } });
     document.querySelector('.main-content').style.marginLeft = 'var(--sidebar-width)';
+
+    const topbar = TopBar({
+      title: 'Leave Approvals Queue',
+      subtitle: 'Review and action staff leave applications',
+      user: { name: user.name, role: 'admin' }
+    });
+    document.getElementById('topbar-mount').appendChild(topbar);
 
     let currentFilter = 'all';
     let allLeave = [];
@@ -53,8 +64,12 @@
 
     async function init() {
       await DayflowDB.init();
-      [allLeave, employees] = await Promise.all([DayflowDB.getAllLeaveRequests(), DayflowDB.getEmployees()]);
-      renderStats(); renderTable();
+      [allLeave, employees] = await Promise.all([
+        DayflowDB.getAllLeaveRequests(),
+        DayflowDB.getEmployees()
+      ]);
+      renderStats();
+      renderTable();
 
       document.querySelectorAll('.filter-tab').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -67,68 +82,94 @@
     }
 
     function renderStats() {
-      const statsEl = document.getElementById('leave-stats'); statsEl.innerHTML = '';
-      const pending  = allLeave.filter(l=>l.status==='pending').length;
-      const approved = allLeave.filter(l=>l.status==='approved').length;
-      const rejected = allLeave.filter(l=>l.status==='rejected').length;
+      const statsEl = document.getElementById('leave-stats');
+      statsEl.innerHTML = '';
+      const pending  = allLeave.filter(l => l.status === 'pending').length;
+      const approved = allLeave.filter(l => l.status === 'approved').length;
+      const rejected = allLeave.filter(l => l.status === 'rejected').length;
+
       [
-        { title:'Pending Requests', value:pending,  icon:'alert',    color:'warning' },
-        { title:'Approved',         value:approved, icon:'check',    color:'success' },
-        { title:'Rejected',         value:rejected, icon:'x',        color:'danger'  },
-      ].forEach((s,i) => { const c=StatCard(s);c.style.animationDelay=`${i*0.07}s`;statsEl.appendChild(c); });
+        { title: 'Pending Requests', value: pending,  icon: 'alert', color: pending > 0 ? 'warning' : 'success' },
+        { title: 'Approved Leaves',  value: approved, icon: 'check', color: 'success' },
+        { title: 'Rejected Leaves',  value: rejected, icon: 'x',     color: 'danger'  },
+      ].forEach((s, i) => {
+        const c = StatCard(s);
+        c.style.animationDelay = `${i * 0.06}s`;
+        statsEl.appendChild(c);
+      });
     }
 
     function renderTable() {
       const data = (currentFilter === 'all' ? allLeave : allLeave.filter(l => l.status === currentFilter))
         .map(l => {
-          const emp = employees.find(e=>e.employee_id===l.employee_id)||{};
-          return { ...l, emp_name: emp.name||l.employee_id, department: emp.department||'—', avatar:(emp.name||'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() };
-        }).sort((a,b) => new Date(b.applied_at)-new Date(a.applied_at));
+          const emp = employees.find(e => e.employee_id === l.employee_id) || {};
+          return {
+            ...l,
+            emp_name: emp.name || l.employee_id,
+            department: emp.department || '—',
+            avatar: (emp.name || 'U').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+          };
+        }).sort((a, b) => new Date(b.applied_at) - new Date(a.applied_at));
 
-      const mount = document.getElementById('leave-table-mount'); mount.innerHTML='';
+      const mount = document.getElementById('leave-table-mount');
+      mount.innerHTML = '';
+
       const table = DataTable({
         columns: [
-          { key:'emp_name', label:'Employee', sortable:true, render:(v,r)=>{
-            const d=document.createElement('div');d.style.cssText='display:flex;align-items:center;gap:10px;';
-            d.innerHTML=`<div class="avatar" style="width:32px;height:32px;font-size:11px;">${r.avatar}</div><div><div style="font-weight:600;font-size:var(--text-sm);">${escHtml(v)}</div><div style="font-size:var(--text-xs);color:var(--text-secondary);">${escHtml(r.employee_id)}</div></div>`;return d;}},
-          { key:'type',       label:'Leave Type',  sortable:true },
-          { key:'start_date', label:'From', sortable:true, render:(v)=>new Date(v).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) },
-          { key:'end_date',   label:'To',   sortable:true, render:(v)=>new Date(v).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) },
-          { key:'reason',     label:'Reason' },
-          { key:'status', label:'Status', sortable:true, render:(v)=>StatusBadge({status:v}) },
+          {
+            key: 'emp_name', label: 'Employee', sortable: true,
+            render: (v, r) => {
+              const d = document.createElement('div');
+              d.style.cssText = 'display:flex;align-items:center;gap:10px;';
+              d.innerHTML = `<div class="avatar" style="width:32px;height:32px;font-size:11px;">${r.avatar}</div>
+                <div><div style="font-weight:600;font-size:var(--text-sm);">${escHtml(v)}</div><div style="font-size:var(--text-xs);color:var(--text-secondary);">${escHtml(r.employee_id)}</div></div>`;
+              return d;
+            }
+          },
+          { key: 'type',       label: 'Leave Type', sortable: true },
+          { key: 'start_date', label: 'From', sortable: true, render: (v) => new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
+          { key: 'end_date',   label: 'To',   sortable: true, render: (v) => new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) },
+          { key: 'reason',     label: 'Reason' },
+          { key: 'status', label: 'Status', sortable: true, render: (v) => StatusBadge({ status: v }) },
         ],
-        data, pageSize:10,
+        data,
+        pageSize: 8,
         actions: (row) => {
           if (row.status !== 'pending') {
-            const s = el('span',{}); s.innerHTML = `<span class="caption" style="color:var(--text-tertiary);">Actioned</span>`; return [s];
+            const s = el('span', {});
+            s.innerHTML = `<span class="caption" style="color:var(--text-tertiary);">Processed</span>`;
+            return [s];
           }
-          const approveBtn = el('button',{class:'btn btn-secondary btn-sm',title:'Approve'});
-          approveBtn.innerHTML = Icons.check + '<span>Approve</span>';
-          approveBtn.style.cssText='color:var(--success);border-color:var(--success-bg);background:var(--success-bg);';
-          approveBtn.addEventListener('click', async (e) => {
+          const appBtn = el('button', { class: 'btn btn-secondary btn-sm', style: 'color:var(--success);border-color:var(--success-bg);background:var(--success-bg);' });
+          appBtn.innerHTML = Icons.check + '<span>Approve</span>';
+          appBtn.onclick = async (e) => {
             e.stopPropagation();
-            await DayflowDB.saveLeaveRequest({...row, status:'approved'});
-            showToast(`Leave approved for ${row.emp_name}`, 'success');
+            await DayflowDB.saveLeaveRequest({ ...row, status: 'approved' });
+            showToast(`Approved leave for ${row.emp_name}`, 'success');
             allLeave = await DayflowDB.getAllLeaveRequests();
-            renderStats(); renderTable();
-          });
-          const rejectBtn = el('button',{class:'btn btn-secondary btn-sm',title:'Reject'});
-          rejectBtn.innerHTML = Icons.x + '<span>Reject</span>';
-          rejectBtn.style.cssText='color:var(--danger);border-color:var(--danger-bg);background:var(--danger-bg);';
-          rejectBtn.addEventListener('click', async (e) => {
+            renderStats();
+            renderTable();
+          };
+
+          const rejBtn = el('button', { class: 'btn btn-secondary btn-sm', style: 'color:var(--danger);border-color:var(--danger-bg);background:var(--danger-bg);' });
+          rejBtn.innerHTML = Icons.x + '<span>Reject</span>';
+          rejBtn.onclick = async (e) => {
             e.stopPropagation();
-            await DayflowDB.saveLeaveRequest({...row, status:'rejected'});
-            showToast(`Leave rejected for ${row.emp_name}`, 'warning');
+            await DayflowDB.saveLeaveRequest({ ...row, status: 'rejected' });
+            showToast(`Rejected leave for ${row.emp_name}`, 'warning');
             allLeave = await DayflowDB.getAllLeaveRequests();
-            renderStats(); renderTable();
-          });
-          return [approveBtn, rejectBtn];
+            renderStats();
+            renderTable();
+          };
+
+          return [appBtn, rejBtn];
         }
       });
+
       mount.appendChild(table.element);
     }
 
-    init().catch(err => showToast('Error: '+err.message,'error'));
+    init().catch(err => showToast('Error: ' + err.message, 'error'));
   </script>
 </body>
 </html>
