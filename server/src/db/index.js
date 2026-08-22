@@ -14,8 +14,11 @@ const schemaPath = path.join(__dirname, 'schema.sql');
 // Dual-compat SQLite loader: native node:sqlite (Node 22.5+) with better-sqlite3 fallback (Node 20)
 let db;
 try {
-  const { DatabaseSync } = await import('node:sqlite');
-  db = new DatabaseSync(dbPath);
+  const sqliteModule = await import('node:sqlite');
+  if (typeof sqliteModule.DatabaseSync !== 'function') {
+    throw new Error('node:sqlite DatabaseSync is not available in this Node runtime');
+  }
+  db = new sqliteModule.DatabaseSync(dbPath);
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec('PRAGMA journal_mode = WAL;');
   db.exec('PRAGMA busy_timeout = 5000;');

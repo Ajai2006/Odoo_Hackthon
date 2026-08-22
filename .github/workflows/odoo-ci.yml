@@ -55,6 +55,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
 
       - name: Install Python Dependencies & Odoo Core Requirements
         run: |
@@ -63,7 +64,7 @@ jobs:
 
       - name: Verify PostgreSQL Service Health
         run: |
-          PGPASSWORD=odoo psql -h localhost -U odoo -d postgres -c "SELECT version();"
+          PGPASSWORD=odoo psql -h 127.0.0.1 -U odoo -d postgres -c "SELECT version();"
 
       - name: Audit Odoo Manifest & Verify Module Dependencies
         run: |
@@ -74,10 +75,11 @@ jobs:
           assert 'depends' in manifest, 'Manifest missing depends key'
           assert isinstance(manifest['depends'], list), 'depends must be a list'
           valid_deps = {'base', 'hr', 'hr_attendance', 'hr_holidays'}
-          assert set(manifest['depends']).issubset(valid_deps), f'Invalid dependencies found: {manifest[\"depends\"]}'
+          deps = manifest.get('depends', [])
+          assert set(deps).issubset(valid_deps), f'Invalid dependencies found: {deps}'
           print('✅ Odoo __manifest__.py is valid!')
           print('   Module Name:', manifest.get('name'))
-          print('   Dependencies:', manifest.get('depends'))
+          print('   Dependencies:', deps)
           "
 
       - name: Validate Custom Module File Structure
