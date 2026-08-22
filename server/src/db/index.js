@@ -1,4 +1,3 @@
-import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,12 +11,23 @@ const dbPath = process.env.NODE_ENV === 'test'
 
 const schemaPath = path.join(__dirname, 'schema.sql');
 
-export const db = new DatabaseSync(dbPath);
+// Dual-compat SQLite loader: native node:sqlite (Node 22.5+) with better-sqlite3 fallback (Node 20)
+let db;
+try {
+  const { DatabaseSync } = await import('node:sqlite');
+  db = new DatabaseSync(dbPath);
+  db.exec('PRAGMA foreign_keys = ON;');
+  db.exec('PRAGMA journal_mode = WAL;');
+  db.exec('PRAGMA busy_timeout = 5000;');
+} catch (e) {
+  const Database = (await import('better-sqlite3')).default;
+  db = new Database(dbPath);
+  db.pragma('foreign_keys = ON');
+  db.pragma('journal_mode = WAL');
+  db.pragma('busy_timeout = 5000');
+}
 
-// Enable Foreign Keys, WAL mode, and busy timeout for concurrent safety
-db.exec('PRAGMA foreign_keys = ON;');
-db.exec('PRAGMA journal_mode = WAL;');
-db.exec('PRAGMA busy_timeout = 5000;');
+export { db };
 
 export function initDb() {
   try {

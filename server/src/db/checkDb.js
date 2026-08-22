@@ -1,4 +1,3 @@
-import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -10,7 +9,14 @@ const dbPath = process.env.DB_PATH || path.join(__dirname, '../../dayflow.db');
 console.log(`🔍 Verifying SQLite database connection at: ${dbPath}`);
 
 try {
-  const db = new DatabaseSync(dbPath);
+  let db;
+  try {
+    const { DatabaseSync } = await import('node:sqlite');
+    db = new DatabaseSync(dbPath);
+  } catch (e) {
+    const Database = (await import('better-sqlite3')).default;
+    db = new Database(dbPath);
+  }
 
   // 1. Run basic connectivity test
   const testRes = db.prepare('SELECT 1 as connected').get();
