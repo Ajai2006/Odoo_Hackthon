@@ -7,7 +7,7 @@ import { HistoryTable } from './components/HistoryTable';
 import { AdminMonitor } from './components/AdminMonitor';
 import { AnalyticsView }from './components/AnalyticsView';
 import { LoginPortal }  from './components/LoginPortal';
-import { api, getCurrentUserId, setCurrentUserId } from './services/api';
+import { api } from './services/api';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 /* ---- Toast stack ---- */

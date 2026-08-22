@@ -5,7 +5,6 @@ import {
   LogOut, UserCog, ChevronsLeft, ChevronsRight, Menu, X,
   Shield, UserCheck, ArrowRight, Building2, Lock, RefreshCw
 } from 'lucide-react';
-import { setCurrentUserId } from '../services/api';
 
 /* ---- Role-aware sidebar navigation configurations ---- */
 const GET_NAV_ITEMS = (role, department) => {
@@ -63,7 +62,6 @@ export function AppShell({
   }, []);
 
   const handleSwitchUser = (userId) => {
-    setCurrentUserId(userId);
     setDropdownOpen(false);
     setSwitcherModalOpen(false);
     if (onUserChange) onUserChange(parseInt(userId, 10));
