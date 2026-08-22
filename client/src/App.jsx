@@ -8,6 +8,7 @@ import { AdminMonitor } from './components/AdminMonitor';
 import { AnalyticsView }from './components/AnalyticsView';
 import { LeaveManager } from './components/LeaveManager';
 import { WorkforceRiskWidget } from './components/WorkforceRiskWidget';
+import { AIAssistantWidget } from './components/AIAssistantWidget';
 import { LoginPortal }  from './components/LoginPortal';
 import { api } from './services/api';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
@@ -321,6 +322,12 @@ export function App() {
             )}
           </>
         )}
+
+        {/* 🔮 Floating Dayflow AI Assistant Widget */}
+        <AIAssistantWidget
+          currentUser={currentUser}
+          todayRecord={todayRecord}
+        />
       </AppShell>
     </>
   );
