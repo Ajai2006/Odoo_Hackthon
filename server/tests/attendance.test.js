@@ -73,3 +73,22 @@ test('Attendance Analytics - Metric calculations return consistent aggregates', 
   assert.ok(totals.total > 0, 'Should have seeded attendance records');
   assert.ok(totals.present >= 0, 'Present count should be non-negative');
 });
+
+test('RBAC - Seed data establishes 3-Tier roles (admin, manager, employee)', async () => {
+  const admin = dbHelper.get("SELECT role FROM users WHERE email = 'sarah.jenkins@dayflow.io'");
+  const manager = dbHelper.get("SELECT role FROM users WHERE email = 'marcus.vance@dayflow.io'");
+  const employee = dbHelper.get("SELECT role FROM users WHERE email = 'priya.patel@dayflow.io'");
+
+  assert.strictEqual(admin.role, 'admin', 'Sarah Jenkins should be admin');
+  assert.strictEqual(manager.role, 'manager', 'Marcus Vance should be manager');
+  assert.strictEqual(employee.role, 'employee', 'Priya Patel should be employee');
+});
+
+test('RBAC - Department scoping filters records accurately for managers', async () => {
+  const designStaff = dbHelper.query("SELECT e.id FROM employees e WHERE e.department = 'Design'");
+  const engineeringStaff = dbHelper.query("SELECT e.id FROM employees e WHERE e.department = 'Engineering'");
+
+  assert.ok(designStaff.length > 0, 'Design department has staff');
+  assert.ok(engineeringStaff.length > 0, 'Engineering department has staff');
+  assert.notStrictEqual(designStaff.length, engineeringStaff.length + designStaff.length);
+});

@@ -347,13 +347,17 @@ router.get('/weekly', (req, res) => {
 
 /**
  * GET /api/attendance/all
- * Admin-only attendance monitor endpoint.
+ * Attendance monitor endpoint — accessible to Admin (all depts) and Manager (own dept).
  * Supports filters: date, department, status, search
  */
-router.get('/all', requireRole('admin'), (req, res) => {
+router.get('/all', requireRole('admin', 'manager'), (req, res) => {
   autoFlagPastIncomplete();
 
   const { date, department, status, search, limit = 100, offset = 0 } = req.query;
+
+  // If role is manager, enforce their own department
+  const isManager = req.user.role === 'manager';
+  const effectiveDept = isManager ? (req.employee?.department || 'Design') : department;
 
   let query = `
     SELECT 
@@ -384,9 +388,9 @@ router.get('/all', requireRole('admin'), (req, res) => {
     params.push(date);
   }
 
-  if (department && department !== 'all') {
+  if (effectiveDept && effectiveDept !== 'all') {
     query += ` AND e.department = ?`;
-    params.push(department);
+    params.push(effectiveDept);
   }
 
   if (status && status !== 'all') {
@@ -411,19 +415,31 @@ router.get('/all', requireRole('admin'), (req, res) => {
 
   // Aggregated quick stats for today/selected date
   const targetDate = date || new Date().toISOString().split('T')[0];
-  const summaryStats = dbHelper.get(`
+  
+  let summaryQuery = `
     SELECT 
-      (SELECT COUNT(*) FROM employees) as totalEmployees,
-      (SELECT COUNT(*) FROM attendance WHERE date = ? AND (status = 'present' OR check_in IS NOT NULL)) as checkedInCount,
-      (SELECT COUNT(*) FROM attendance WHERE date = ? AND late_minutes > 0) as lateCount,
-      (SELECT COUNT(*) FROM attendance WHERE date = ? AND status = 'leave') as leaveCount,
-      (SELECT COUNT(*) FROM attendance WHERE date = ? AND status = 'absent') as absentCount
-  `, [targetDate, targetDate, targetDate, targetDate]);
+      (SELECT COUNT(*) FROM employees WHERE 1=1 ${effectiveDept && effectiveDept !== 'all' ? 'AND department = ?' : ''}) as totalEmployees,
+      (SELECT COUNT(*) FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.date = ? AND (a.status = 'present' OR a.check_in IS NOT NULL) ${effectiveDept && effectiveDept !== 'all' ? 'AND e.department = ?' : ''}) as checkedInCount,
+      (SELECT COUNT(*) FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.date = ? AND a.late_minutes > 0 ${effectiveDept && effectiveDept !== 'all' ? 'AND e.department = ?' : ''}) as lateCount,
+      (SELECT COUNT(*) FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.date = ? AND a.status = 'leave' ${effectiveDept && effectiveDept !== 'all' ? 'AND e.department = ?' : ''}) as leaveCount,
+      (SELECT COUNT(*) FROM attendance a JOIN employees e ON a.employee_id = e.id WHERE a.date = ? AND a.status = 'absent' ${effectiveDept && effectiveDept !== 'all' ? 'AND e.department = ?' : ''}) as absentCount
+  `;
+
+  const summaryParams = [];
+  if (effectiveDept && effectiveDept !== 'all') {
+    summaryParams.push(effectiveDept, targetDate, effectiveDept, targetDate, effectiveDept, targetDate, effectiveDept, targetDate, effectiveDept);
+  } else {
+    summaryParams.push(targetDate, targetDate, targetDate, targetDate);
+  }
+
+  const summaryStats = dbHelper.get(summaryQuery, summaryParams);
 
   return res.json({
     success: true,
     date: targetDate,
     summary: summaryStats,
+    departmentScope: isManager ? effectiveDept : 'all',
+    role: req.user.role,
     records
   });
 });
@@ -435,14 +451,16 @@ router.get('/all', requireRole('admin'), (req, res) => {
  */
 router.get('/analytics', (req, res) => {
   const { department, month, year } = req.query;
+  const isManager = req.user.role === 'manager';
+  const effectiveDept = isManager ? (req.employee?.department || 'Design') : department;
 
   // 1. Overall stats across all historical records
   let filterClause = '';
   const filterParams = [];
 
-  if (department && department !== 'all') {
+  if (effectiveDept && effectiveDept !== 'all') {
     filterClause += ` AND e.department = ?`;
-    filterParams.push(department);
+    filterParams.push(effectiveDept);
   }
 
   const totals = dbHelper.get(`

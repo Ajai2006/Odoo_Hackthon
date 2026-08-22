@@ -66,9 +66,12 @@ router.get('/demo-personas', (req, res) => {
     SELECT
       u.id,
       u.name,
+      u.email,
       u.role,
       u.avatar,
-      e.department
+      e.department,
+      e.designation,
+      e.employee_code
     FROM users u
     LEFT JOIN employees e ON u.id = e.user_id
     ORDER BY u.id ASC

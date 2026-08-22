@@ -41,8 +41,8 @@ export function requireRole(...roles) {
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ 
-        error: `Forbidden: Access requires one of [${roles.join(', ')}] role(s). Current role: '${req.user.role}'` 
+      return res.status(403).json({
+        error: `Forbidden: Access requires one of [${roles.join(', ')}] role(s). Current role: '${req.user.role}'`
       });
     }
 

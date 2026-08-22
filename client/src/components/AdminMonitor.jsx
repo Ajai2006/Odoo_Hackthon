@@ -44,25 +44,30 @@ function EmptyMonitor() {
   );
 }
 
-export function AdminMonitor({ showToast }) {
+export function AdminMonitor({ currentUser, showToast }) {
+  const isManager = currentUser?.role === 'manager';
+  const managerDept = currentUser?.employee?.department || 'Design';
+
   const [date, setDate]         = useState(new Date().toISOString().slice(0,10));
-  const [dept, setDept]         = useState('all');
+  const [dept, setDept]         = useState(isManager ? managerDept : 'all');
   const [status, setStatus]     = useState('all');
   const [search, setSearch]     = useState('');
   const [loading, setLoading]   = useState(true);
   const [data, setData]         = useState({ records:[], summary:{} });
 
+  const effectiveDept = isManager ? managerDept : dept;
+
   const load = async () => {
     setLoading(true);
     try {
-      const res = await api.getAllAttendance({ date, department: dept, status, search });
+      const res = await api.getAllAttendance({ date, department: effectiveDept, status, search });
       setData(res);
     } catch (err) {
       showToast('Failed to load monitor', err.message, 'error');
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [date, dept, status]);
+  useEffect(() => { load(); }, [date, effectiveDept, status]);
 
   const handleSearchSubmit = (e) => { e.preventDefault(); load(); };
 
@@ -128,21 +133,29 @@ export function AdminMonitor({ showToast }) {
           {/* Department */}
           <div className="form-group">
             <label className="form-label" htmlFor="monitor-dept">Department</label>
-            <div className="select-wrap">
-              <select
-                id="monitor-dept"
-                className="form-control"
-                value={dept}
-                onChange={e => setDept(e.target.value)}
-              >
-                <option value="all">All departments</option>
-                <option value="Engineering">Engineering</option>
-                <option value="Design">Design</option>
-                <option value="HR & People">HR &amp; People</option>
-                <option value="Sales">Sales</option>
-              </select>
-              <ChevronDown size={14} className="select-caret" aria-hidden="true" />
-            </div>
+            {isManager ? (
+              <div className="locked-dept-badge" title={`Restricted to your managed department (${managerDept})`}>
+                <span className="badge-manager" style={{ padding:'6px 12px', display:'inline-flex', alignItems:'center', gap:6, borderRadius:'var(--r-btn)', fontSize:13, fontWeight:600 }}>
+                  <Users size={14} /> {managerDept} (Team View)
+                </span>
+              </div>
+            ) : (
+              <div className="select-wrap">
+                <select
+                  id="monitor-dept"
+                  className="form-control"
+                  value={dept}
+                  onChange={e => setDept(e.target.value)}
+                >
+                  <option value="all">All departments</option>
+                  <option value="Engineering">Engineering</option>
+                  <option value="Design">Design</option>
+                  <option value="HR & People">HR &amp; People</option>
+                  <option value="Sales">Sales</option>
+                </select>
+                <ChevronDown size={14} className="select-caret" aria-hidden="true" />
+              </div>
+            )}
           </div>
 
           {/* Status */}

@@ -29,22 +29,28 @@ function AnalyticsSkeleton() {
   );
 }
 
-export function AnalyticsView({ showToast }) {
-  const [dept, setDept]         = useState('all');
+export function AnalyticsView({ currentUser, showToast }) {
+  const isManager = currentUser?.role === 'manager';
+  const isEmployee = currentUser?.role === 'employee';
+  const userDept = currentUser?.employee?.department || 'Design';
+
+  const [dept, setDept]         = useState(isManager ? userDept : (isEmployee ? userDept : 'all'));
   const [loading, setLoading]   = useState(true);
   const [data, setData]         = useState(null);
+
+  const effectiveDept = isManager ? userDept : dept;
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await api.getAnalytics({ department: dept });
+      const res = await api.getAnalytics({ department: effectiveDept });
       setData(res);
     } catch (err) {
       showToast('Analytics error', err.message, 'error');
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [dept]);
+  useEffect(() => { load(); }, [effectiveDept]);
 
   if (loading) return <AnalyticsSkeleton />;
 
@@ -52,26 +58,46 @@ export function AnalyticsView({ showToast }) {
 
   return (
     <div>
-      {/* Dept filter */}
-      <div className="page-header-actions mb-6" style={{ display:'flex', justifyContent:'flex-end' }}>
-        <div className="form-group flex-row" style={{ flexDirection:'row', alignItems:'center', gap:'var(--sp-2)' }}>
-          <Building2 size={16} style={{ color:'var(--text-secondary)' }} aria-hidden="true" />
-          <div className="select-wrap">
-            <select
-              className="form-control"
-              value={dept}
-              onChange={e => setDept(e.target.value)}
-              aria-label="Filter analytics by department"
-            >
-              <option value="all">Company-wide</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Design">Design</option>
-              <option value="HR & People">HR &amp; People</option>
-              <option value="Sales">Sales</option>
-            </select>
-            <ChevronDown size={14} className="select-caret" aria-hidden="true" />
-          </div>
+      {/* Scope banner / Dept filter */}
+      <div className="page-header-actions mb-6" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'var(--sp-4)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'var(--sp-2)' }}>
+          {isEmployee && (
+            <span className="badge-employee" style={{ padding:'4px 10px', borderRadius:'var(--r-btn)', fontSize:12, fontWeight:600 }}>
+              Showing {userDept} Department &amp; Benchmarks
+            </span>
+          )}
+          {isManager && (
+            <span className="badge-manager" style={{ padding:'4px 10px', borderRadius:'var(--r-btn)', fontSize:12, fontWeight:600 }}>
+              Team Analytics Scope: {userDept}
+            </span>
+          )}
+          {currentUser?.role === 'admin' && (
+            <span className="badge-admin" style={{ padding:'4px 10px', borderRadius:'var(--r-btn)', fontSize:12, fontWeight:600 }}>
+              Organization-Wide Executive Analytics
+            </span>
+          )}
         </div>
+
+        {currentUser?.role === 'admin' && (
+          <div className="form-group flex-row" style={{ flexDirection:'row', alignItems:'center', gap:'var(--sp-2)' }}>
+            <Building2 size={16} style={{ color:'var(--text-secondary)' }} aria-hidden="true" />
+            <div className="select-wrap">
+              <select
+                className="form-control"
+                value={dept}
+                onChange={e => setDept(e.target.value)}
+                aria-label="Filter analytics by department"
+              >
+                <option value="all">Company-wide</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Design">Design</option>
+                <option value="HR & People">HR &amp; People</option>
+                <option value="Sales">Sales</option>
+              </select>
+              <ChevronDown size={14} className="select-caret" aria-hidden="true" />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 6-card stat strip — Differentiator StatCards */}

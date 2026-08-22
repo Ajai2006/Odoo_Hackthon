@@ -6,6 +6,7 @@ import { CalendarView } from './components/CalendarView';
 import { HistoryTable } from './components/HistoryTable';
 import { AdminMonitor } from './components/AdminMonitor';
 import { AnalyticsView }from './components/AnalyticsView';
+import { LoginPortal }  from './components/LoginPortal';
 import { api, getCurrentUserId, setCurrentUserId } from './services/api';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
@@ -31,11 +32,12 @@ function ToastStack({ toasts }) {
 }
 
 export function App() {
-  const [currentUser,     setCurrentUser]     = useState(null);
-  const [usersList,       setUsersList]       = useState([]);
-  const [activeTab,       setActiveTab]       = useState('attendance');
-  const [appLoading,      setAppLoading]      = useState(true);
+  const [currentUser,       setCurrentUser]       = useState(null);
+  const [usersList,         setUsersList]         = useState([]);
+  const [activeTab,         setActiveTab]         = useState('attendance');
+  const [appLoading,        setAppLoading]        = useState(true);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [isSignedOut,       setIsSignedOut]       = useState(false);
 
   const [todayRecord,     setTodayRecord]     = useState(null);
   const [weeklyData,      setWeeklyData]      = useState(null);
@@ -53,16 +55,27 @@ export function App() {
   /* Load users list + current user */
   const loadUser = async (userIdOverride) => {
     try {
-      // Use dev-only endpoint: returns minimal fields, blocked in production
       const personasRes = await api.getDemoPersonas();
       const list        = personasRes.personas || [];
       setUsersList(list);
 
-      if (userIdOverride) setCurrentUserId(userIdOverride);
+      if (userIdOverride) {
+        setCurrentUserId(userIdOverride);
+      }
+      
       const meRes = await api.getCurrentUser();
-      setCurrentUser(meRes.user ? { ...meRes.user, employee: meRes.employee } : null);
+      if (meRes.user) {
+        const fullUser = { ...meRes.user, employee: meRes.employee };
+        setCurrentUser(fullUser);
+        setIsSignedOut(false);
+        return fullUser;
+      } else {
+        setCurrentUser(null);
+        return null;
+      }
     } catch (err) {
       showToast('Load error', err.message, 'error');
+      return null;
     }
   };
 
@@ -88,20 +101,42 @@ export function App() {
   /* Initial mount */
   useEffect(() => {
     (async () => {
-      await loadUser();
-      await loadAttendance();
+      const u = await loadUser();
+      if (u) {
+        await loadAttendance();
+      }
       setAppLoading(false);
     })();
   }, []);
 
-  /* User persona switch */
+  /* User persona / role switch */
   const handleUserChange = async (newUserId) => {
     setAppLoading(true);
-    await loadUser(newUserId);
-    await loadAttendance();
+    const updatedUser = await loadUser(newUserId);
+    if (updatedUser) {
+      await loadAttendance();
+      // If regular employee, make sure they don't remain on restricted monitor tab
+      if (updatedUser.role === 'employee' && activeTab === 'admin') {
+        setActiveTab('attendance');
+      }
+    }
     setAppLoading(false);
-    const u = usersList.find(u => u.id === newUserId);
-    if (u) showToast('Persona switched', `Now viewing as ${u.name}`, 'info');
+    const u = usersList.find(item => item.id === newUserId);
+    if (u) showToast('Account Active', `Logged in as ${u.name} (${u.role.toUpperCase()})`, 'success');
+  };
+
+  /* Sign in from portal */
+  const handleLoginUser = async (userId) => {
+    setAppLoading(true);
+    setIsSignedOut(false);
+    await handleUserChange(userId);
+  };
+
+  /* Sign out */
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    setIsSignedOut(true);
+    showToast('Signed Out', 'You have been safely signed out of Dayflow HRMS.', 'info');
   };
 
   /* Punch success callback */
@@ -110,24 +145,51 @@ export function App() {
   };
 
   const isAdmin = currentUser?.role === 'admin';
+  const isManager = currentUser?.role === 'manager';
+  const canAccessMonitor = isAdmin || isManager;
 
-  /* ---- PAGE HEADER metadata per tab ---- */
+  /* ---- PAGE HEADER metadata per tab & role ---- */
   const PAGE_META = {
     attendance: {
-      title: 'My Attendance',
-      desc:  `Welcome back, ${currentUser?.name?.split(' ')[0] || 'there'}. Manage your daily shifts and view your history.`,
+      title: 'My Attendance & Shift Clock',
+      desc:  `Welcome back, ${currentUser?.name?.split(' ')[0] || 'there'}. Clock in, manage your daily shift, and review your performance history.`,
     },
     admin: {
-      title: 'Attendance Monitor',
-      desc:  'Real-time attendance tracking for all employees, shift compliance and workforce logs.',
+      title: isAdmin 
+        ? 'Company Attendance Monitor' 
+        : `Team Attendance Monitor (${currentUser?.employee?.department || 'Design'})`,
+      desc:  isAdmin 
+        ? 'Real-time attendance tracking across all company departments and employee records.'
+        : `Real-time shift compliance and attendance roster for ${currentUser?.employee?.department || 'your'} team.`,
     },
     analytics: {
-      title: 'Workforce Analytics',
-      desc:  'Key metrics, punctuality benchmarks, absenteeism analysis, and monthly trends.',
+      title: isAdmin 
+        ? 'Workforce Intelligence & Analytics' 
+        : isManager 
+          ? `Team Analytics (${currentUser?.employee?.department || 'Design'})` 
+          : 'Personal Attendance Insights',
+      desc:  isAdmin 
+        ? 'Company-wide attendance rate, absenteeism trends, and department benchmarks.'
+        : isManager
+          ? `Key attendance metrics, punctuality benchmarks, and logs for ${currentUser?.employee?.department || 'your'} team.`
+          : 'Your personal attendance rates, shift completions, punctuality track record, and monthly targets.',
     },
   };
 
   const meta = PAGE_META[activeTab] || PAGE_META.attendance;
+
+  // Show Login Portal if signed out or no authenticated user
+  if (!appLoading && (isSignedOut || !currentUser)) {
+    return (
+      <>
+        <ToastStack toasts={toasts} />
+        <LoginPortal 
+          usersList={usersList} 
+          onSelectUser={handleLoginUser} 
+        />
+      </>
+    );
+  }
 
   return (
     <>
@@ -139,6 +201,7 @@ export function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onUserChange={handleUserChange}
+        onSignOut={handleSignOut}
       >
         {appLoading ? (
           /* Full-page skeleton */
@@ -181,14 +244,20 @@ export function App() {
               </>
             )}
 
-            {/* ── ADMIN MONITOR TAB ── */}
-            {activeTab === 'admin' && isAdmin && (
-              <AdminMonitor showToast={showToast} />
+            {/* ── ADMIN / MANAGER MONITOR TAB ── */}
+            {activeTab === 'admin' && canAccessMonitor && (
+              <AdminMonitor 
+                currentUser={currentUser} 
+                showToast={showToast} 
+              />
             )}
 
             {/* ── ANALYTICS TAB ── */}
             {activeTab === 'analytics' && (
-              <AnalyticsView showToast={showToast} />
+              <AnalyticsView 
+                currentUser={currentUser} 
+                showToast={showToast} 
+              />
             )}
           </>
         )}

@@ -2,13 +2,14 @@ import { db, initDb } from './index.js';
 
 export function seedDatabase() {
   console.log('🌱 Seeding Dayflow HRMS Database...');
-  
+
   // Ensure schema exists
   initDb();
 
   // Clear existing records to ensure idempotent seed
   db.exec('PRAGMA foreign_keys = OFF;');
   db.exec('DELETE FROM attendance;');
+
   db.exec('DELETE FROM employees;');
   db.exec('DELETE FROM users;');
   db.exec('PRAGMA foreign_keys = ON;');
@@ -23,7 +24,7 @@ export function seedDatabase() {
     [1, 'Sarah Jenkins', 'sarah.jenkins@dayflow.io', 'admin', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'],
     [2, 'Alex Chen', 'alex.chen@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'],
     [3, 'Priya Patel', 'priya.patel@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'],
-    [4, 'Marcus Vance', 'marcus.vance@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'],
+    [4, 'Marcus Vance', 'marcus.vance@dayflow.io', 'manager', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'],
     [5, 'Elena Rostova', 'elena.rostova@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80'],
     [6, 'David Kim', 'david.kim@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'],
     [7, 'Fatima Al-Mansoor', 'fatima.m@dayflow.io', 'employee', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80']
@@ -68,7 +69,7 @@ export function seedDatabase() {
       const dateObj = new Date();
       dateObj.setDate(today.getDate() - daysAgo);
       const dayOfWeek = dateObj.getDay();
-      
+
       // Skip weekends (0 = Sunday, 6 = Saturday)
       if (dayOfWeek === 0 || dayOfWeek === 6) continue;
 
@@ -76,7 +77,7 @@ export function seedDatabase() {
 
       // Deterministic pseudo-random generation based on empId and daysAgo
       const seed = (empId * 13 + daysAgo * 7) % 100;
-      
+
       let status = 'present';
       let checkIn = null;
       let checkOut = null;
@@ -106,7 +107,7 @@ export function seedDatabase() {
         const isLate = seed % 5 === 0;
         const inHour = isLate ? 9 : 8;
         const inMin = isLate ? 35 + (seed % 20) : 45 + (seed % 15);
-        
+
         if (isLate) {
           lateMinutes = (inHour * 60 + inMin) - (9 * 60 + 30);
           notes = `Late arrival (+${lateMinutes}m)`;
@@ -117,7 +118,7 @@ export function seedDatabase() {
 
         checkIn = `${dateStr} ${String(inHour).padStart(2, '0')}:${String(inMin).padStart(2, '0')}:00`;
         checkOut = `${dateStr} ${String(outHour).padStart(2, '0')}:${String(outMin).padStart(2, '0')}:00`;
-        
+
         const inMs = new Date(checkIn).getTime();
         const outMs = new Date(checkOut).getTime();
         workHours = Number(((outMs - inMs) / (1000 * 60 * 60)).toFixed(2));
@@ -132,61 +133,61 @@ export function seedDatabase() {
 
   // Priya Patel (empId 3) checked in early
   insertAttendance.run(
-    3, 
-    todayStr, 
-    `${todayStr} 08:50:00`, 
-    null, 
-    'incomplete', 
-    0.0, 
-    0, 
+    3,
+    todayStr,
+    `${todayStr} 08:50:00`,
+    null,
+    'incomplete',
+    0.0,
+    0,
     'Active shift in progress'
   );
 
   // Marcus Vance (empId 4) checked in and completed half day
   insertAttendance.run(
-    4, 
-    todayStr, 
-    `${todayStr} 09:00:00`, 
-    `${todayStr} 13:15:00`, 
-    'half_day', 
-    4.25, 
-    0, 
+    4,
+    todayStr,
+    `${todayStr} 09:00:00`,
+    `${todayStr} 13:15:00`,
+    'half_day',
+    4.25,
+    0,
     'Medical appointment in afternoon'
   );
 
   // Elena Rostova (empId 5) on leave
   insertAttendance.run(
-    5, 
-    todayStr, 
-    null, 
-    null, 
-    'leave', 
-    0.0, 
-    0, 
+    5,
+    todayStr,
+    null,
+    null,
+    'leave',
+    0.0,
+    0,
     'Approved Sick Leave'
   );
 
   // David Kim (empId 6) checked in late
   insertAttendance.run(
-    6, 
-    todayStr, 
-    `${todayStr} 09:48:00`, 
-    null, 
-    'incomplete', 
-    0.0, 
-    18, 
+    6,
+    todayStr,
+    `${todayStr} 09:48:00`,
+    null,
+    'incomplete',
+    0.0,
+    18,
     'Client commute delay'
   );
 
   // Fatima Al-Mansoor (empId 7) checked in on time
   insertAttendance.run(
-    7, 
-    todayStr, 
-    `${todayStr} 08:55:00`, 
-    null, 
-    'incomplete', 
-    0.0, 
-    0, 
+    7,
+    todayStr,
+    `${todayStr} 08:55:00`,
+    null,
+    'incomplete',
+    0.0,
+    0,
     'Active shift'
   );
 
