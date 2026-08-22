@@ -8,13 +8,15 @@ export function seedDatabase() {
 
   // Clear existing records to ensure idempotent seed
   db.exec('PRAGMA foreign_keys = OFF;');
+  db.exec('DELETE FROM audit_logs;');
+  db.exec('DELETE FROM leave_balances;');
+  db.exec('DELETE FROM leave_requests;');
   db.exec('DELETE FROM attendance;');
-
   db.exec('DELETE FROM employees;');
   db.exec('DELETE FROM users;');
   db.exec('PRAGMA foreign_keys = ON;');
 
-  // 1. Insert Users (Admin + Employees)
+  // 1. Insert Users (Admin + Employees + Manager)
   const insertUser = db.prepare(`
     INSERT INTO users (id, name, email, password_hash, role, avatar)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -36,7 +38,7 @@ export function seedDatabase() {
     insertUser.run(...u);
   }
 
-  // 2. Insert Employees (Stub for Member 1: {id, user_id, employee_code, department, designation, joining_date})
+  // 2. Insert Employees
   const insertEmployee = db.prepare(`
     INSERT INTO employees (id, user_id, employee_code, department, designation, joining_date)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -56,28 +58,52 @@ export function seedDatabase() {
     insertEmployee.run(...e);
   }
 
-  // 3. Generate Historical Attendance Records (Past 30 days)
+  // 3. Insert Leave Balances
+  const insertBalance = db.prepare(`
+    INSERT INTO leave_balances (employee_id, paid_balance, sick_balance, unpaid_balance)
+    VALUES (?, ?, ?, ?)
+  `);
+  for (let empId = 1; empId <= 7; empId++) {
+    insertBalance.run(empId, 18.0, 10.0, 30.0);
+  }
+
+  // 4. Insert Seed Leave Requests
+  const insertLeave = db.prepare(`
+    INSERT INTO leave_requests (id, employee_id, leave_type, start_date, end_date, total_days, reason, status, reviewed_by, reviewer_comments)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const today = new Date();
+  const formatYMD = (d) => d.toISOString().split('T')[0];
+  const nextWeekStart = new Date(today); nextWeekStart.setDate(today.getDate() + 3);
+  const nextWeekEnd = new Date(today); nextWeekEnd.setDate(today.getDate() + 5);
+
+  const seedLeaves = [
+    [1, 2, 'paid', formatYMD(nextWeekStart), formatYMD(nextWeekEnd), 3.0, 'Annual family road trip', 'pending', null, null],
+    [2, 3, 'sick', '2026-08-10', '2026-08-11', 2.0, 'Dental surgery and recovery', 'approved', 1, 'Approved. Get well soon!'],
+    [3, 5, 'paid', '2026-08-15', '2026-08-16', 2.0, 'Personal rejuvenation days', 'approved', 1, 'Approved'],
+    [4, 6, 'unpaid', '2026-08-05', '2026-08-07', 3.0, 'Attending overseas wedding', 'rejected', 1, 'Product launch blackout window. Request denied.']
+  ];
+
+  for (const l of seedLeaves) {
+    insertLeave.run(...l);
+  }
+
+  // 5. Generate Historical Attendance Records (Past 28 days)
   const insertAttendance = db.prepare(`
     INSERT INTO attendance (employee_id, date, check_in, check_out, status, work_hours, late_minutes, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const today = new Date();
-  const formatYMD = (d) => d.toISOString().split('T')[0];
-
-  // Populate last 28 days for each employee
   for (let empId = 1; empId <= 7; empId++) {
     for (let daysAgo = 28; daysAgo >= 1; daysAgo--) {
       const dateObj = new Date();
       dateObj.setDate(today.getDate() - daysAgo);
       const dayOfWeek = dateObj.getDay();
 
-      // Skip weekends (0 = Sunday, 6 = Saturday)
-      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip weekends
 
       const dateStr = formatYMD(dateObj);
-
-      // Deterministic pseudo-random generation based on empId and daysAgo
       const seed = (empId * 13 + daysAgo * 7) % 100;
 
       let status = 'present';
@@ -88,15 +114,12 @@ export function seedDatabase() {
       let notes = 'Regular workday';
 
       if (seed < 4) {
-        // Leave
         status = 'leave';
         notes = 'Approved PTO / Leave';
       } else if (seed < 8) {
-        // Absent
         status = 'absent';
         notes = 'Unplanned absence';
       } else if (seed < 16) {
-        // Half day
         status = 'half_day';
         const inHour = 9;
         const inMin = 15 + (seed % 15);
@@ -105,7 +128,6 @@ export function seedDatabase() {
         workHours = 4.25;
         notes = 'Half day afternoon off';
       } else {
-        // Present
         const isLate = seed % 5 === 0;
         const inHour = isLate ? 9 : 8;
         const inMin = isLate ? 35 + (seed % 20) : 45 + (seed % 15);
@@ -130,75 +152,17 @@ export function seedDatabase() {
     }
   }
 
-  // 4. Seed Today's Attendance for Demo
+  // Seed Today's Attendance
   const todayStr = formatYMD(today);
-
-  // Priya Patel (empId 3) checked in early
-  insertAttendance.run(
-    3,
-    todayStr,
-    `${todayStr} 08:50:00`,
-    null,
-    'incomplete',
-    0.0,
-    0,
-    'Active shift in progress'
-  );
-
-  // Marcus Vance (empId 4) checked in and completed half day
-  insertAttendance.run(
-    4,
-    todayStr,
-    `${todayStr} 09:00:00`,
-    `${todayStr} 13:15:00`,
-    'half_day',
-    4.25,
-    0,
-    'Medical appointment in afternoon'
-  );
-
-  // Elena Rostova (empId 5) on leave
-  insertAttendance.run(
-    5,
-    todayStr,
-    null,
-    null,
-    'leave',
-    0.0,
-    0,
-    'Approved Sick Leave'
-  );
-
-  // David Kim (empId 6) checked in late
-  insertAttendance.run(
-    6,
-    todayStr,
-    `${todayStr} 09:48:00`,
-    null,
-    'incomplete',
-    0.0,
-    18,
-    'Client commute delay'
-  );
-
-  // Fatima Al-Mansoor (empId 7) checked in on time
-  insertAttendance.run(
-    7,
-    todayStr,
-    `${todayStr} 08:55:00`,
-    null,
-    'incomplete',
-    0.0,
-    0,
-    'Active shift'
-  );
-
-  // Note: Sarah Jenkins (emp 1) & Alex Chen (emp 2) are left NOT checked-in today, so the user/judge can test punching in & out live!
+  insertAttendance.run(3, todayStr, `${todayStr} 08:50:00`, null, 'incomplete', 0.0, 0, 'Active shift in progress');
+  insertAttendance.run(4, todayStr, `${todayStr} 09:00:00`, `${todayStr} 13:15:00`, 'half_day', 4.25, 0, 'Medical appointment in afternoon');
+  insertAttendance.run(5, todayStr, null, null, 'leave', 0.0, 0, 'Approved Sick Leave');
+  insertAttendance.run(6, todayStr, `${todayStr} 09:48:00`, null, 'incomplete', 0.0, 18, 'Client commute delay');
+  insertAttendance.run(7, todayStr, `${todayStr} 08:55:00`, null, 'incomplete', 0.0, 0, 'Active shift');
 
   console.log('✅ Database seeded successfully!');
 }
 
-// Run if called directly
 if (process.argv[1] && process.argv[1].endsWith('seed.js')) {
   seedDatabase();
 }

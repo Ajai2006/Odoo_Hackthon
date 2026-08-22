@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import attendanceRoutes from './routes/attendance.js';
 import usersRoutes from './routes/users.js';
+import leavesRoutes from './routes/leaves.js';
 
 dotenv.config();
 
@@ -28,7 +29,7 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id']
 }));
 
@@ -49,6 +50,7 @@ app.get('/api/health', (req, res) => {
 // Mount Routes
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/leaves', leavesRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

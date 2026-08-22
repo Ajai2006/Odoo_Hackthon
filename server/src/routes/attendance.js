@@ -552,4 +552,137 @@ router.get('/analytics', (req, res) => {
   });
 });
 
+/**
+ * GET /api/attendance/analytics/workforce-risk
+ * Rule-based Workforce Attendance & Leave Risk Engine
+ * Analyzes department-level absence patterns, Monday/Friday spikes, sick leave surges, and leave clustering.
+ */
+router.get('/analytics/workforce-risk', (req, res) => {
+  const { department = 'Engineering' } = req.query;
+
+  const empCount = dbHelper.get(`
+    SELECT COUNT(*) as count FROM employees WHERE department = ?
+  `, [department])?.count || 5;
+
+  const dayStats = dbHelper.query(`
+    SELECT 
+      CASE strftime('%w', a.date)
+        WHEN '1' THEN 'Monday'
+        WHEN '5' THEN 'Friday'
+        ELSE 'Midweek'
+      END as day_type,
+      COUNT(*) as total_records,
+      SUM(CASE WHEN a.status IN ('absent', 'incomplete') THEN 1 ELSE 0 END) as absence_count
+    FROM attendance a
+    JOIN employees e ON a.employee_id = e.id
+    WHERE e.department = ?
+    GROUP BY day_type
+  `, [department]);
+
+  let mondayAbsenceRate = 0;
+  let fridayAbsenceRate = 0;
+  let midweekAbsenceRate = 0;
+
+  for (const row of dayStats) {
+    const rate = row.total_records > 0 ? (row.absence_count / row.total_records) * 100 : 0;
+    if (row.day_type === 'Monday') mondayAbsenceRate = rate;
+    if (row.day_type === 'Friday') fridayAbsenceRate = rate;
+    if (row.day_type === 'Midweek') midweekAbsenceRate = rate;
+  }
+
+  const avgBaseRate = Math.max(5, midweekAbsenceRate);
+  const indicators = [];
+
+  if (mondayAbsenceRate > 1.2 * avgBaseRate && mondayAbsenceRate > 8) {
+    indicators.push({
+      type: 'MONDAY_ABSENCE_SPIKE',
+      severity: mondayAbsenceRate > 20 ? 'HIGH' : 'MEDIUM',
+      value: Math.round(mondayAbsenceRate),
+      description: `Monday absence rate is ${Math.round(mondayAbsenceRate)}% (higher than midweek baseline of ${Math.round(avgBaseRate)}%).`
+    });
+  }
+
+  if (fridayAbsenceRate > 1.2 * avgBaseRate && fridayAbsenceRate > 8) {
+    indicators.push({
+      type: 'FRIDAY_ABSENCE_SPIKE',
+      severity: fridayAbsenceRate > 20 ? 'HIGH' : 'MEDIUM',
+      value: Math.round(fridayAbsenceRate),
+      description: `Friday absence rate is ${Math.round(fridayAbsenceRate)}% (higher than midweek baseline of ${Math.round(avgBaseRate)}%).`
+    });
+  }
+
+  const sickCurrent = dbHelper.get(`
+    SELECT COUNT(*) as count FROM leave_requests l
+    JOIN employees e ON l.employee_id = e.id
+    WHERE e.department = ? AND l.leave_type = 'sick' 
+      AND l.created_at >= date('now', '-14 days')
+  `, [department])?.count || 0;
+
+  const sickPrior = dbHelper.get(`
+    SELECT COUNT(*) as count FROM leave_requests l
+    JOIN employees e ON l.employee_id = e.id
+    WHERE e.department = ? AND l.leave_type = 'sick' 
+      AND l.created_at >= date('now', '-28 days') AND l.created_at < date('now', '-14 days')
+  `, [department])?.count || 0;
+
+  if (sickCurrent > sickPrior || sickCurrent >= 1) {
+    const spikePct = sickPrior > 0 ? Math.round(((sickCurrent - sickPrior) / sickPrior) * 100) : 100;
+    indicators.push({
+      type: 'SICK_LEAVE_SPIKE',
+      severity: spikePct >= 50 ? 'HIGH' : 'MEDIUM',
+      value: spikePct,
+      description: `Sick leave requests surged by ${spikePct}% over the prior 14-day window.`
+    });
+  }
+
+  const overlappingLeaves = dbHelper.get(`
+    SELECT COUNT(DISTINCT l.employee_id) as count FROM leave_requests l
+    JOIN employees e ON l.employee_id = e.id
+    WHERE e.department = ? AND l.status IN ('pending', 'approved')
+  `, [department])?.count || 0;
+
+  const overlapPct = Math.round((overlappingLeaves / Math.max(1, empCount)) * 100);
+  if (overlapPct >= 20) {
+    indicators.push({
+      type: 'OVERLAPPING_LEAVE_CLUSTER',
+      severity: overlapPct >= 40 ? 'HIGH' : 'MEDIUM',
+      value: overlapPct,
+      description: `${overlapPct}% of ${department} team members have active or pending leave requests.`
+    });
+  }
+
+  if (indicators.length === 0) {
+    indicators.push({
+      type: 'HEALTHY_ATTENDANCE_STABILITY',
+      severity: 'LOW',
+      value: 95,
+      description: 'Attendance stability is within optimal parameters. Absence rates remain low across all weekdays.'
+    });
+  }
+
+  const hasHigh = indicators.some(i => i.severity === 'HIGH');
+  const mediumCount = indicators.filter(i => i.severity === 'MEDIUM').length;
+
+  let overallRisk = 'LOW';
+  if (hasHigh || mediumCount >= 2) {
+    overallRisk = 'HIGH';
+  } else if (mediumCount === 1) {
+    overallRisk = 'MEDIUM';
+  }
+
+  const recommendations = {
+    HIGH: 'High workforce disruption risk detected. Review upcoming team deliverables, evaluate overlapping leave requests, and schedule mid-week check-ins.',
+    MEDIUM: 'Moderate risk detected. Monitor Friday/Monday shift coverage and verify team capacity before approving additional PTO.',
+    LOW: 'Workforce operations are stable with low risk of attendance bottlenecking.'
+  };
+
+  return res.json({
+    success: true,
+    department,
+    overall_risk: overallRisk,
+    indicators,
+    recommendation: recommendations[overallRisk]
+  });
+});
+
 export default router;

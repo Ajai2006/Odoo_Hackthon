@@ -7,40 +7,67 @@ api.defaults.withCredentials = true
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null)      // { id, username, first_name, last_name, role, employee_id }
-  const [loading, setLoading] = useState(true)
+  const [user, setUser]         = useState(null)
+  const [employee, setEmployee] = useState(null)
+  const [loading, setLoading]   = useState(true)
 
-  // ── Restore session from httpOnly cookie ────────────────────
+  // Restore session on page load
   useEffect(() => {
-    api.get('/api/accounts/me/')
-      .then(({ data }) => setUser(data))
-      .catch(() => { setUser(null) })
+    const token = localStorage.getItem('auth_token')
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+
+    api.get('/api/users/me', { headers })
+      .then(({ data }) => {
+        if (data.user) {
+          setUser(data.user)
+          setEmployee(data.employee || null)
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem('auth_token')
+        setUser(null)
+        setEmployee(null)
+      })
       .finally(() => setLoading(false))
   }, [])
 
-  // ── Login — Backend sets httpOnly cookie ────────────────────
-  const login = useCallback(async (username, password) => {
-    await api.post('/api/token/', { username, password })
-    const me = await api.get('/api/accounts/me/')
-    setUser(me.data)
-    return me.data
+  // Login via API
+  const login = useCallback(async (emailOrUsername, password) => {
+    const { data } = await api.post('/api/users/login', {
+      email: emailOrUsername,
+      password
+    })
+
+    if (data.token) {
+      localStorage.setItem('auth_token', data.token)
+      api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+    }
+
+    if (data.user) {
+      setUser(data.user)
+      setEmployee(data.employee || null)
+      return data.user
+    }
   }, [])
 
-  // ── Logout — Backend clears httpOnly cookie ──────────────────
+  // Logout via API
   const logout = useCallback(async () => {
     try {
       await api.post('/api/users/logout')
     } catch (e) {
       // Ignore network errors on logout
     }
+    localStorage.removeItem('auth_token')
+    delete api.defaults.headers.common['Authorization']
     setUser(null)
+    setEmployee(null)
   }, [])
 
   const isAdmin    = user?.role === 'admin'
-  const isEmployee = user?.role === 'employee'
+  const isEmployee = user?.role === 'employee' || user?.role === 'manager'
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, isAdmin, isEmployee }}>
+    <AuthContext.Provider value={{ user, employee, loading, login, logout, isAdmin, isEmployee }}>
       {children}
     </AuthContext.Provider>
   )

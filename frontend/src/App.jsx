@@ -11,6 +11,7 @@ import NotFound           from '@/pages/NotFound'
 
 import EmployeeDashboard  from '@/pages/employee/EmployeeDashboard'
 import PayslipViewer      from '@/pages/employee/PayslipViewer'
+import LeavePage          from '@/pages/employee/LeavePage'
 import AdminDashboard     from '@/pages/admin/AdminDashboard'
 import PayrollTable       from '@/pages/admin/PayrollTable'
 
@@ -71,6 +72,7 @@ export default function App() {
           {/* Employee Views */}
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
           <Route path="/employee/payslip"   element={<PayslipViewer />} />
+          <Route path="/employee/leave"     element={<LeavePage />} />
 
           {/* Admin Views */}
           <Route path="/admin/dashboard" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />

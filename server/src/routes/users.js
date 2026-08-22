@@ -47,6 +47,73 @@ function clearFailedAttempts(identifier) {
 }
 
 /**
+ * POST /api/users/register
+ * Real registration endpoint creating user + employee records with bcrypt password hashing.
+ */
+router.post('/register', (req, res) => {
+  const { name, email, password, role = 'employee', department = 'Engineering', designation = 'Software Engineer' } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Name, email, and password are required fields.' });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email address format.' });
+  }
+
+  const existingUser = dbHelper.get('SELECT id FROM users WHERE email = ?', [email]);
+  if (existingUser) {
+    return res.status(409).json({ error: 'An account with this email address already exists.' });
+  }
+
+  const password_hash = bcrypt.hashSync(password, 10);
+  const avatar = `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`;
+
+  const userResult = dbHelper.run(
+    'INSERT INTO users (name, email, password_hash, role, avatar) VALUES (?, ?, ?, ?, ?)',
+    [name, email, password_hash, role.toLowerCase(), avatar]
+  );
+
+  const userId = userResult.lastInsertRowid;
+  const lastEmp = dbHelper.get('SELECT MAX(id) as maxId FROM employees');
+  const nextId = (lastEmp?.maxId || 0) + 1;
+  const employeeCode = `DF-${1000 + nextId}`;
+
+  const empResult = dbHelper.run(
+    'INSERT INTO employees (user_id, employee_code, department, designation, joining_date) VALUES (?, ?, ?, ?, CURRENT_DATE)',
+    [userId, employeeCode, department, designation]
+  );
+
+  const employeeId = empResult.lastInsertRowid;
+
+  dbHelper.run(
+    'INSERT INTO leave_balances (employee_id, paid_balance, sick_balance, unpaid_balance) VALUES (?, 20.0, 10.0, 30.0)',
+    [employeeId]
+  );
+
+  const user = dbHelper.get('SELECT id, name, email, role, avatar FROM users WHERE id = ?', [userId]);
+  const employee = dbHelper.get('SELECT id, user_id, employee_code, department, designation, joining_date FROM employees WHERE id = ?', [employeeId]);
+
+  const token = generateToken(user);
+
+  res.cookie('auth_token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 8 * 60 * 60 * 1000
+  });
+
+  return res.status(201).json({
+    success: true,
+    message: 'Account registered successfully',
+    token,
+    user,
+    employee
+  });
+});
+
+/**
  * POST /api/users/login
  * Authenticates user credentials with bcrypt password verification, rate limiting, and lockout.
  */

@@ -81,13 +81,30 @@ export default function Register() {
     setLoading(true)
     setServerError('')
 
-    // Simulate account registration
     try {
-      await new Promise(r => setTimeout(r, 600))
-      // Navigate to login with success prompt
-      navigate('/login', { replace: true })
-    } catch {
-      setServerError('Registration failed. Please try again or contact your HR Administrator.')
+      const res = await fetch('/api/users/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.username,
+          email: form.email,
+          password: form.password,
+          role: form.role,
+          department: 'Engineering'
+        })
+      })
+
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Registration failed')
+      }
+
+      if (data.token) {
+        localStorage.setItem('auth_token', data.token)
+      }
+      navigate('/login', { replace: true, state: { message: 'Registration successful! Please log in.' } })
+    } catch (err) {
+      setServerError(err.message || 'Registration failed. Please try again or contact your HR Administrator.')
     } finally {
       setLoading(false)
     }
