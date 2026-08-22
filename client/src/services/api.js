@@ -65,6 +65,10 @@ export const api = {
     setAuthToken(null);
     return request('/api/users/logout', { method: 'POST' });
   },
+  addEmployee: (payload) => request('/api/users/add-employee', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
 
   // Attendance Endpoints
   getTodayStatus: () => request('/api/attendance/today'),

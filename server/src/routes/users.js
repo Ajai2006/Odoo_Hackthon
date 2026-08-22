@@ -302,4 +302,79 @@ router.get('/', requireRole('admin'), (req, res) => {
   return res.json({ success: true, users });
 });
 
+/**
+ * POST /api/users/add-employee
+ * Admin-only endpoint to create a new user & employee profile with position and password.
+ */
+router.post('/add-employee', requireRole('admin'), (req, res) => {
+  const {
+    name,
+    email,
+    password,
+    position,
+    designation,
+    department = 'Engineering',
+    role = 'employee'
+  } = req.body;
+
+  const jobPosition = position || designation;
+
+  if (!name || !email || !password || !jobPosition) {
+    return res.status(400).json({
+      error: 'Name, email, password, and position (designation) are required fields.'
+    });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email address format.' });
+  }
+
+  const existingUser = dbHelper.get('SELECT id FROM users WHERE email = ?', [email]);
+  if (existingUser) {
+    return res.status(409).json({ error: 'An account with this email address already exists.' });
+  }
+
+  const password_hash = bcrypt.hashSync(password, 10);
+  const avatar = `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`;
+
+  const userResult = dbHelper.run(
+    'INSERT INTO users (name, email, password_hash, role, avatar) VALUES (?, ?, ?, ?, ?)',
+    [name, email, password_hash, role.toLowerCase(), avatar]
+  );
+
+  const userId = userResult.lastInsertRowid;
+  const lastEmp = dbHelper.get('SELECT MAX(id) as maxId FROM employees');
+  const nextId = (lastEmp?.maxId || 0) + 1;
+  const employeeCode = `DF-${1000 + nextId}`;
+
+  const empResult = dbHelper.run(
+    'INSERT INTO employees (user_id, employee_code, department, designation, joining_date) VALUES (?, ?, ?, ?, CURRENT_DATE)',
+    [userId, employeeCode, department, jobPosition]
+  );
+
+  const employeeId = empResult.lastInsertRowid;
+
+  dbHelper.run(
+    'INSERT INTO leave_balances (employee_id, paid_balance, sick_balance, unpaid_balance) VALUES (?, 20.0, 10.0, 30.0)',
+    [employeeId]
+  );
+
+  // Log audit entry
+  dbHelper.run(
+    'INSERT INTO audit_logs (actor_id, actor_name, action, target_type, target_id, details) VALUES (?, ?, ?, ?, ?, ?)',
+    [req.user.id, req.user.name, 'CREATE_EMPLOYEE', 'user', userId, `Created employee ${name} (${employeeCode}) as ${jobPosition}`]
+  );
+
+  const newUser = dbHelper.get('SELECT id, name, email, role, avatar FROM users WHERE id = ?', [userId]);
+  const newEmployee = dbHelper.get('SELECT id, user_id, employee_code, department, designation, joining_date FROM employees WHERE id = ?', [employeeId]);
+
+  return res.status(201).json({
+    success: true,
+    message: `Employee account for ${name} (${jobPosition}) created successfully`,
+    user: newUser,
+    employee: newEmployee
+  });
+});
+
 export default router;

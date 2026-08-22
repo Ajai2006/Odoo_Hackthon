@@ -1,10 +1,27 @@
 import React from 'react';
-import { Users, Search, ChevronDown, RefreshCw } from 'lucide-react';
+import { Users, Search, ChevronDown, RefreshCw, UserPlus } from 'lucide-react';
 
 const DEPARTMENTS = ['Engineering', 'Design', 'HR & People', 'Sales', 'Finance', 'Marketing', 'Operations'];
 
+interface FilterBarProps {
+  date: string;
+  setDate: (date: string) => void;
+  dept: string;
+  setDept: (dept: string) => void;
+  status: string;
+  setStatus: (status: string) => void;
+  search: string;
+  setSearch: (search: string) => void;
+  isManager: boolean;
+  managerDept: string;
+  onRefresh: () => void;
+  onSearch: (e: React.FormEvent<HTMLFormElement>) => void;
+  onExport: () => void;
+  onAddEmployee?: () => void;
+}
+
 /**
- * FilterBar — Date / Department / Status / Search filters + Refresh + Export actions.
+ * FilterBar — Date / Department / Status / Search filters + Refresh + Export + Add Employee actions.
  * Extracted from AdminMonitor for single-responsibility maintainability.
  */
 export function FilterBar({
@@ -13,8 +30,8 @@ export function FilterBar({
   status, setStatus,
   search, setSearch,
   isManager, managerDept,
-  onRefresh, onSearch, onExport
-}) {
+  onRefresh, onSearch, onExport, onAddEmployee
+}: FilterBarProps) {
   return (
     <div className="filter-bar">
       {/* Date */}
@@ -97,13 +114,24 @@ export function FilterBar({
       </form>
 
       {/* Actions */}
-      <div className="form-group" style={{ justifyContent:'flex-end', display:'flex', gap:'0.5rem' }}>
+      <div className="form-group" style={{ justifyContent:'flex-end', display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
         <label className="form-label">&nbsp;</label>
+        {onAddEmployee && (
+          <button
+            className="btn btn-primary"
+            onClick={onAddEmployee}
+            style={{ display:'flex', alignItems:'center', gap:'0.35rem', fontSize:'12px', padding:'0.45rem 0.85rem', background:'var(--primary, #2563eb)' }}
+            aria-label="Add Employee"
+          >
+            <UserPlus size={15} />
+            Add Employee
+          </button>
+        )}
         <button className="btn btn-ghost" onClick={onRefresh} aria-label="Refresh data">
           <RefreshCw size={15} /> Refresh
         </button>
         <button
-          className="btn btn-primary"
+          className="btn btn-ghost"
           onClick={onExport}
           style={{ display:'flex', alignItems:'center', gap:'0.35rem', fontSize:'12px', padding:'0.45rem 0.85rem' }}
         >

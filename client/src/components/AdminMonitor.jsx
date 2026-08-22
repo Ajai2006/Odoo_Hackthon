@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { StatCard } from './StatCard';
 import { FilterBar } from './FilterBar';
 import { AttendanceTable } from './AttendanceTable';
+import { AddEmployeeModal } from './AddEmployeeModal';
 
 /* Skeleton */
 function MonitorSkeleton() {
@@ -108,18 +109,20 @@ function buildAndDownloadCsv({ records, date, effectiveDept, status, inCount, to
 
 /**
  * AdminMonitor — Company-wide attendance monitor for Admins and Managers.
- * Sub-components: FilterBar (filters + actions) · AttendanceTable (data rows)
+ * Sub-components: FilterBar (filters + actions) · AttendanceTable (data rows) · AddEmployeeModal
  */
 export function AdminMonitor({ currentUser, showToast }) {
+  const isAdmin    = currentUser?.role === 'admin';
   const isManager  = currentUser?.role === 'manager';
   const managerDept = currentUser?.employee?.department || 'Design';
 
-  const [date,    setDate]   = useState(new Date().toISOString().slice(0,10));
-  const [dept,    setDept]   = useState(isManager ? managerDept : 'all');
-  const [status,  setStatus] = useState('all');
-  const [search,  setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [data,    setData]   = useState({ records:[], summary:{} });
+  const [date,           setDate]          = useState(new Date().toISOString().slice(0,10));
+  const [dept,           setDept]          = useState(isManager ? managerDept : 'all');
+  const [status,         setStatus]        = useState('all');
+  const [search,         setSearch]        = useState('');
+  const [loading,        setLoading]       = useState(true);
+  const [data,           setData]          = useState({ records:[], summary:{} });
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const effectiveDept = isManager ? managerDept : dept;
 
@@ -191,11 +194,22 @@ export function AdminMonitor({ currentUser, showToast }) {
             buildAndDownloadCsv({ records, date, effectiveDept, status, inCount, total, absent, leave, late });
             showToast('Export Complete', 'HR Master Executive & Individual Analysis exported to CSV.', 'success');
           }}
+          onAddEmployee={isAdmin ? () => setIsAddModalOpen(true) : undefined}
         />
 
         {/* Attendance data table */}
         <AttendanceTable records={records} date={date} />
       </div>
+
+      {/* Add Employee Modal for Admin */}
+      {isAdmin && (
+        <AddEmployeeModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={load}
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 }
