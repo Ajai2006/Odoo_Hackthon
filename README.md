@@ -22,23 +22,35 @@ HRM/
 
 ## 🚀 Quick Start (Attendance & Analytics Module)
 
-### 1. Install & Seed
+> **Evaluators: run these three commands from the repo root, in order.**
+> Requires Node.js 18+ only (no Python/Django setup needed for this module —
+> `backend/`, `frontend/`, and `src/` are separate/experimental prototypes not
+> used by this flow).
+
+### 1. Install dependencies (installs server/ and client/ automatically)
+```bash
+npm run setup
+```
+
+### 2. Seed the database
 ```bash
 # Seed realistic attendance history, RBAC personas (Admin, Manager, Employee)
 npm run seed
 ```
 
-### 2. Start Full-Stack Dev Server
+### 3. Start Full-Stack Dev Server
 ```bash
 # Concurrently runs Express API (:5000) and React Vite (:3000)
 npm run dev
 ```
+Then open **http://localhost:3000** in your browser.
 
-### 3. Run Automated Tests
+### 4. Run Automated Tests
 ```bash
 # Executes native test suite for validation & RBAC rules
 npm test
 ```
+All 6 tests (attendance validation + RBAC) should pass.
 
 ---
 

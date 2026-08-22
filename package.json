@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Dayflow HRMS - Enterprise Attendance, Payroll & Workforce Management Module",
   "private": true,
+  "type": "module",
   "scripts": {
+    "setup": "npm install --prefix server && npm install --prefix client",
     "dev": "node dev.js",
     "dev:next": "next dev -p 3000",
     "seed": "cd server && npm run seed",
