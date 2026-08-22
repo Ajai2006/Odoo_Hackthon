@@ -9,17 +9,22 @@ on:
 
 jobs:
   test:
-    name: Node.js Unit & Integration Tests (Node 22 LTS)
+    name: Node.js Unit & Integration Tests (${{ matrix.node-version }})
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['20.x', '22.x']
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 22 LTS
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
 
